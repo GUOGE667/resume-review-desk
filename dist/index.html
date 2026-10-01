@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10233d">
+  <title>履历台 · 简历分类与人工复核</title>
+  <meta name="description" content="离线简历分类与证据审核演示。所有示例人物均为虚构，分类结果由人工复核。">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%2310233d'/%3E%3Cpath d='M18 13h28v38H18z' fill='%23fff' rx='4'/%3E%3Cpath d='M25 24h14M25 32h14M25 40h9' stroke='%232869c7' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">履</span><span><strong>履历台</strong><small>REVIEW DESK</small></span></div>
+      <div class="workspace-label">招聘工作空间 <span>演示版</span></div>
+      <nav class="side-nav" aria-label="主要导航">
+        <button class="nav-item active" type="button" data-view="overview"><span class="nav-icon" aria-hidden="true">▦</span>总览</button>
+        <button class="nav-item" type="button" data-view="queue"><span class="nav-icon" aria-hidden="true">▤</span>简历队列 <span class="nav-count" id="nav-count">10</span></button>
+        <button class="nav-item" type="button" data-view="rules"><span class="nav-icon" aria-hidden="true">⌘</span>岗位规则</button>
+        <button class="nav-item" type="button" data-view="evaluation"><span class="nav-icon" aria-hidden="true">◫</span>离线评测</button>
+        <button class="nav-item" type="button" data-view="privacy"><span class="nav-icon" aria-hidden="true">◇</span>数据与边界</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="privacy-dot"></div><div><strong>本地浏览器处理</strong><span>无服务器上传 · 无 API 调用</span></div></div>
+    </aside>
+    <div class="main-area">
+      <header class="topbar"><div><div class="breadcrumb">工作空间 <span>/</span> <span id="crumb">总览</span></div><h1 id="page-title">招聘审核总览</h1></div><div class="top-actions"><span class="offline-pill"><span></span>离线演示</span><button class="primary-button" id="top-import" type="button">＋ 导入简历</button></div></header>
+      <main>
+        <section class="view" id="view-overview" aria-labelledby="page-title">
+          <div class="notice"><div class="notice-icon">i</div><div><strong>辅助归档，由人决定</strong><p>页面只根据公开的岗位关键词给出归档建议和原文证据。它不评价候选人优劣，也不会自动淘汰简历。</p></div><button type="button" class="text-button" data-go="privacy">了解边界</button></div>
+          <div class="section-heading"><div><span class="eyebrow">WORKSPACE OVERVIEW</span><h2>今天需要关注什么</h2></div><p>以下数据来自虚构简历样本及当前会话导入的文件。</p></div>
+          <div class="metrics"><div class="metric"><span>简历总数</span><strong id="metric-total">0</strong><small>当前会话</small></div><div class="metric attention"><span>待人工复核</span><strong id="metric-review">0</strong><small>证据不足或归类有歧义</small></div><div class="metric"><span>已有分类建议</span><strong id="metric-suggested">0</strong><small>仍需招聘人员确认</small></div><div class="metric"><span>人工已确认</span><strong id="metric-approved">0</strong><small>仅代表人工归档记录</small></div></div>
+          <div class="overview-grid"><section class="panel distribution"><div class="panel-head"><div><span class="eyebrow">ROLE DISTRIBUTION</span><h3>岗位类别分布</h3></div><span class="mini-tag">建议归档</span></div><div id="distribution-bars"></div><p class="panel-note">只统计可归类的建议；待复核简历单独列出。</p></section><section class="panel review-panel"><div class="panel-head"><div><span class="eyebrow">NEEDS ATTENTION</span><h3>优先复核</h3></div><button type="button" class="text-button" data-go="queue">查看全部</button></div><div id="review-preview"></div></section></div>
+          <section class="panel process-panel"><div class="panel-head"><div><span class="eyebrow">HOW IT WORKS</span><h3>一条简历如何进入审核台</h3></div></div><div class="process-steps"><div><span>01</span><strong>读取文本</strong><p>本地解析 PDF / TXT / MD；扫描件需先转成可选中文本。</p></div><div><span>02</span><strong>生成建议</strong><p>岗位关键词匹配到原文后，才形成分类证据。</p></div><div><span>03</span><strong>人工复核</strong><p>招聘人员查看证据、修改类别并留下说明。</p></div><div><span>04</span><strong>导出记录</strong><p>导出分类与复核状态，不包含完整简历正文。</p></div></div></section>
+        </section>
+        <section class="view hidden" id="view-queue" aria-labelledby="queue-heading">
+          <div class="section-heading"><div><span class="eyebrow">RESUME INBOX</span><h2 id="queue-heading">简历队列</h2></div><p>点击条目查看匹配到的原文片段，再进行人工确认。</p></div>
+          <div class="queue-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">搜索简历</span><input id="queue-search" type="search" placeholder="搜索编号、名称或正文关键词"></label><select id="queue-filter" aria-label="筛选状态"><option value="all">全部状态</option><option value="review">待复核</option><option value="suggested">有分类建议</option><option value="approved">人工已确认</option></select><button type="button" class="secondary-button" id="export-csv">导出 CSV</button></div>
+          <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="选择或拖入简历文件"><div class="upload-symbol">＋</div><div><strong>拖入简历，或点击选择文件</strong><p>支持可提取文本的 PDF、TXT、MD；单个文件不超过 5 MB。文件仅在当前会话中处理。</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>简历</th><th>来源</th><th>归档建议 / 人工结果</th><th>证据</th><th>状态</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="queue-body"></tbody></table><div class="empty-state hidden" id="queue-empty">没有符合当前筛选条件的简历。</div></div>
+        </section>
+        <section class="view hidden" id="view-rules" aria-labelledby="rules-heading"><div class="section-heading"><div><span class="eyebrow">ROLE RULES</span><h2 id="rules-heading">岗位规则</h2></div><p>编辑每类岗位的关键词。修改后会重新生成建议，人工确认记录会保留。</p></div><div class="notice compact"><div class="notice-icon">i</div><p>匹配只表示简历文本出现相关证据，不等于符合岗位要求。规则只在当前浏览器会话生效。</p></div><div class="rules-grid" id="rules-grid"></div><div class="rules-actions"><button type="button" class="primary-button" id="save-rules">保存并重新分类</button><button type="button" class="secondary-button" id="reset-rules">恢复示例规则</button></div></section>
+        <section class="view hidden" id="view-evaluation" aria-labelledby="eval-heading"><div class="section-heading"><div><span class="eyebrow">OFFLINE EVALUATION</span><h2 id="eval-heading">离线样本评测</h2></div><p>使用仓库内 10 份人工编写的虚构简历；结果随岗位规则变化。</p></div><div class="eval-hero"><div><span>当前规则的样本归档一致率</span><strong id="eval-accuracy">—</strong><p id="eval-count">—</p></div><div><span>应进入人工复核的样本</span><strong id="eval-review">—</strong><p>包含证据不足和岗位证据相同的案例</p></div></div><div class="panel eval-panel"><div class="panel-head"><div><span class="eyebrow">CASE BY CASE</span><h3>逐条结果</h3></div><span class="mini-tag">仅虚构样本</span></div><div id="eval-rows"></div></div><p class="eval-disclaimer">这是小规模规则回归测试，不能代表真实招聘场景的准确率、公平性或候选人质量。人工审核仍是必要步骤。</p></section>
+        <section class="view hidden" id="view-privacy" aria-labelledby="privacy-heading"><div class="section-heading"><div><span class="eyebrow">DATA & BOUNDARIES</span><h2 id="privacy-heading">数据与使用边界</h2></div><p>清楚说明网站目前做了什么，以及它的局限。</p></div><div class="privacy-grid"><article class="panel"><span class="privacy-index">01</span><h3>数据留在浏览器会话</h3><p>导入文件在本地读取，不传到服务器，也不保存到云端或 localStorage。刷新页面后导入文件与人工复核记录会消失。演示样本全部为虚构人物。</p></article><article class="panel"><span class="privacy-index">02</span><h3>只给归档建议</h3><p>系统依据可编辑关键词提取原文证据，不能判断能力、真实性或岗位适配度。证据不足或存在歧义时进入人工复核队列，不自动淘汰候选人。</p></article><article class="panel"><span class="privacy-index">03</span><h3>没有付费模型调用</h3><p>当前版本使用确定性规则和离线样本。页面不读取 OpenAI 密钥，也没有模型评测结果；后续若接入模型，应先建立有标注的评测集。</p></article><article class="panel"><span class="privacy-index">04</span><h3>部署前仍需评估</h3><p>招聘分类可能影响就业机会。真实企业使用前，需要依据适用地区要求评估隐私、无障碍、公平性、人工监督与申诉流程。</p></article></div><div class="danger-zone"><div><strong>清空当前会话</strong><p>移除所有导入文件与复核记录，恢复虚构演示样本和默认规则。</p></div><button type="button" class="secondary-button" id="reset-session">重置演示</button></div></section>
+      </main>
+      <footer class="footer">履历台 · 作品集原型 <span>·</span> 虚构演示数据 <span>·</span> 无自动录用或淘汰决策</footer>
+    </div>
+  </div>
+  <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
+  <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
