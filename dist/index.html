@@ -7,7 +7,7 @@
   <title>履历台 · 简历分类与人工复核</title>
   <meta name="description" content="离线简历分类与证据审核演示。所有示例人物均为虚构，分类结果由人工复核。">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%2310233d'/%3E%3Cpath d='M18 13h28v38H18z' fill='%23fff' rx='4'/%3E%3Cpath d='M25 24h14M25 32h14M25 40h9' stroke='%232869c7' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css?v=benchmark-1">
+  <link rel="stylesheet" href="./style.css?v=workflow-2">
 </head>
 <body>
   <div class="app-shell">
@@ -19,6 +19,7 @@
         <button class="nav-item" type="button" data-view="queue"><span class="nav-icon" aria-hidden="true">▤</span>简历队列 <span class="nav-count" id="nav-count">10</span></button>
         <button class="nav-item" type="button" data-view="rules"><span class="nav-icon" aria-hidden="true">⌘</span>岗位规则</button>
         <button class="nav-item" type="button" data-view="evaluation"><span class="nav-icon" aria-hidden="true">◫</span>离线评测</button>
+        <button class="nav-item" type="button" data-view="workflow"><span class="nav-icon" aria-hidden="true">◇</span>Agent 回放</button>
         <button class="nav-item" type="button" data-view="privacy"><span class="nav-icon" aria-hidden="true">◇</span>数据与边界</button>
       </nav>
       <div class="sidebar-bottom"><div class="privacy-dot"></div><div><strong>本地浏览器处理</strong><span>无服务器上传 · 无 API 调用</span></div></div>
@@ -57,6 +58,18 @@
           <section class="panel eval-panel"><div class="panel-head"><div><span class="eyebrow">ERROR ANALYSIS</span><h3>逐条检查错误</h3></div><span class="mini-tag" id="eval-error-count">—</span></div><div id="eval-rows"></div></section>
           <p class="eval-disclaimer">首页的 10 份演示简历仍用于功能回归，和这 40 份挑战样本分开。此处结果仅说明虚构案例上的规则表现，不代表真实招聘准确率、公平性或候选人质量。</p>
         </section>
+        <section class="view hidden" id="view-workflow" aria-labelledby="workflow-heading">
+          <div class="section-heading"><div><span class="eyebrow">AGENT WORKFLOW REPLAY</span><h2 id="workflow-heading">离线 Agent 工作流</h2></div><p>选择一条虚构挑战样本，查看工具调用、分支选择与人工交接。</p></div>
+          <div class="notice compact"><div class="notice-icon">i</div><p>这是确定性工具编排模拟，不含 LLM 推理、模型调用或自动录用决策，也不会写入真实简历队列。证据核验只能检查关键词是否出现在摘录和原文，无法判断否定语义。</p></div>
+          <section class="panel workflow-case-panel">
+            <div class="panel-head"><div><span class="eyebrow">INPUT</span><h3>选择回放案例</h3></div><span class="mini-tag">仅虚构样本</span></div>
+            <div class="workflow-controls"><label for="workflow-case">挑战集案例</label><select id="workflow-case"></select><button class="primary-button" id="run-workflow" type="button">重新运行轨迹</button></div>
+            <p id="workflow-text" class="workflow-source"></p>
+            <div id="workflow-result" class="workflow-result" aria-live="polite"></div>
+          </section>
+          <section class="panel workflow-trace-panel"><div class="panel-head"><div><span class="eyebrow">EXECUTION TRACE</span><h3>工具调用轨迹</h3></div><span class="mini-tag" id="workflow-step-count">—</span></div><div id="workflow-trace"></div></section>
+          <p class="eval-disclaimer">回放的预设标签只用于页面对照，不会传给工作流。所有轨迹只保留在当前浏览器会话；正式招聘仍需要独立验证与人工决策。</p>
+        </section>
         <section class="view hidden" id="view-privacy" aria-labelledby="privacy-heading"><div class="section-heading"><div><span class="eyebrow">DATA & BOUNDARIES</span><h2 id="privacy-heading">数据与使用边界</h2></div><p>清楚说明网站目前做了什么，以及它的局限。</p></div><div class="privacy-grid"><article class="panel"><span class="privacy-index">01</span><h3>数据留在浏览器会话</h3><p>导入文件在本地读取，不传到服务器，也不保存到云端或 localStorage。刷新页面后导入文件与人工复核记录会消失。演示样本全部为虚构人物。</p></article><article class="panel"><span class="privacy-index">02</span><h3>只给归档建议</h3><p>系统依据可编辑关键词提取原文证据，不能判断能力、真实性或岗位适配度。证据不足或存在歧义时进入人工复核队列，不自动淘汰候选人。</p></article><article class="panel"><span class="privacy-index">03</span><h3>没有付费模型调用</h3><p>当前版本使用确定性规则和离线样本。页面不读取 OpenAI 密钥，也没有模型评测结果；后续若接入模型，应先建立有标注的评测集。</p></article><article class="panel"><span class="privacy-index">04</span><h3>部署前仍需评估</h3><p>招聘分类可能影响就业机会。真实企业使用前，需要依据适用地区要求评估隐私、无障碍、公平性、人工监督与申诉流程。</p></article></div><div class="danger-zone"><div><strong>清空当前会话</strong><p>移除所有导入文件与复核记录，恢复虚构演示样本和默认规则。</p></div><button type="button" class="secondary-button" id="reset-session">重置演示</button></div></section>
       </main>
       <footer class="footer">履历台 · 作品集原型 <span>·</span> 虚构演示数据 <span>·</span> 无自动录用或淘汰决策</footer>
@@ -65,6 +78,6 @@
   <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.mjs?v=benchmark-1"></script>
+  <script type="module" src="./app.mjs?v=workflow-2"></script>
 </body>
 </html>

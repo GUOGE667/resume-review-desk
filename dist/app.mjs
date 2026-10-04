@@ -2,6 +2,7 @@ import { DEFAULT_ROLES, classifyResume } from './classifier.mjs';
 import { DEMO_RESUMES } from './demo-data.mjs';
 import { BENCHMARK_CASES } from './benchmark-data.mjs';
 import { evaluateBenchmark } from './benchmark.mjs';
+import { runOfflineWorkflow } from './workflow.mjs';
 
 const $ = id => document.getElementById(id);
 const roleName = id => state.roles.find(role => role.id === id)?.name || '待定';
@@ -30,13 +31,14 @@ function categoryLabel(item) { return item.reviewed ? roleName(item.reviewedRole
 function setView(view) {
   if (!$(`view-${view}`)) return;
   state.activeView = view;
-  const names = { overview:'总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线评测',privacy:'数据与边界' };
-  const titles = { overview:'招聘审核总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线样本评测',privacy:'数据与使用边界' };
+  const names = { overview:'总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线评测',workflow:'Agent 回放',privacy:'数据与边界' };
+  const titles = { overview:'招聘审核总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线样本评测',workflow:'离线 Agent 工作流',privacy:'数据与使用边界' };
   document.querySelectorAll('.view').forEach(node => node.classList.toggle('hidden', node.id !== `view-${view}`));
   document.querySelectorAll('.nav-item').forEach(node => node.classList.toggle('active', node.dataset.view === view));
   $('crumb').textContent = names[view]; $('page-title').textContent = titles[view];
   if (view === 'rules') renderRules();
   if (view === 'evaluation') renderEvaluation();
+  if (view === 'workflow') renderWorkflow();
   if (view === 'queue') renderQueue();
   window.scrollTo({ top:0, behavior:'instant' });
 }
@@ -200,7 +202,47 @@ function renderEvaluation() {
     box.append(card);
   }
 }
-function renderAll() { renderOverview(); renderQueue(); renderEvaluation(); }
+const workflowToolNames = {
+  read_text:'读取文本', propose_category:'生成岗位建议', verify_evidence:'核验证据', route_human_review:'交给人工复核',
+};
+function renderWorkflow() {
+  const select = $('workflow-case');
+  if (!select.options.length) {
+    for (const item of BENCHMARK_CASES) {
+      const option = el('option', `${item.id} · ${item.scenario}`); option.value = item.id; select.append(option);
+    }
+  }
+  const item = BENCHMARK_CASES.find(candidate => candidate.id === select.value) || BENCHMARK_CASES[0];
+  if (!item) return;
+  $('workflow-text').textContent = item.text;
+  // The expected label stays in the UI; it is deliberately omitted from input.
+  const run = runOfflineWorkflow({ id:item.id, text:item.text }, state.roles);
+  const label = id => id ? roleName(id) : '待复核';
+  const result = $('workflow-result'); result.replaceChildren();
+  const fields = [
+    ['预设标签', label(item.expected)], ['工作流建议', label(run.final.suggestion)],
+    ['模拟复核级别', run.final.priority], ['是否需要人工确认', run.final.requiresHumanConfirmation ? '需要' : '不需要'],
+  ];
+  for (const [title, value] of fields) { const field = el('div'); field.append(el('span', title), el('strong', value)); result.append(field); }
+  const agrees = run.final.suggestion === item.expected;
+  result.append(el('p', agrees ? '与预设标签一致' : '与预设标签不一致：请查看轨迹中的规则局限', `workflow-comparison ${agrees ? 'agrees' : 'differs'}`));
+  result.append(el('p', run.final.reason, 'workflow-reason'));
+  $('workflow-step-count').textContent = `${run.trace.length} 次工具调用`;
+  const timeline = $('workflow-trace'); timeline.replaceChildren();
+  for (const step of run.trace) {
+    const card = el('article', undefined, 'workflow-step');
+    const marker = el('span', String(step.step).padStart(2, '0'), 'workflow-number');
+    const content = el('div', undefined, 'workflow-step-main');
+    const top = el('div', undefined, 'workflow-step-top');
+    top.append(el('strong', workflowToolNames[step.tool] || step.tool), el('code', step.tool));
+    const status = el('span', step.status === 'ok' ? '完成' : step.status === 'skipped' ? '跳过' : '需处理', `workflow-status ${step.status}`);
+    top.append(status); content.append(top, el('p', step.summary));
+    const details = el('details'); details.append(el('summary', '查看输入与输出'));
+    details.append(el('pre', JSON.stringify({ input:step.input, output:step.output }, null, 2)));
+    content.append(details); card.append(marker, content); timeline.append(card);
+  }
+}
+function renderAll() { renderOverview(); renderQueue(); renderEvaluation(); if (state.activeView === 'workflow') renderWorkflow(); }
 
 async function readFile(file) {
   if (file.size > 5_000_000) throw new Error(`${file.name} 超过 5 MB。`);
@@ -268,6 +310,8 @@ $('queue-filter').addEventListener('change', renderQueue);
 $('save-rules').addEventListener('click', saveRules);
 $('reset-rules').addEventListener('click', () => { state.roles=cloneRoles(); renderAll(); renderRules(); notify('已恢复示例岗位规则。'); });
 $('export-csv').addEventListener('click', exportCsv);
+$('workflow-case').addEventListener('change', renderWorkflow);
+$('run-workflow').addEventListener('click', renderWorkflow);
 $('reset-session').addEventListener('click', () => { state.roles=cloneRoles(); state.resumes=makeSamples(); $('queue-search').value=''; $('queue-filter').value='all'; renderAll(); setView('overview'); notify('已重置为虚构演示样本。'); });
 $('close-dialog').addEventListener('click', () => $('detail-dialog').close());
 renderAll();
