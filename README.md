@@ -4,6 +4,27 @@
 
 > 当前是完全离线的作品集原型：无需 OpenAI API Key，不调用付费模型，也不上传真实候选人数据。
 
+![履历台总览：虚构样本、待复核数量和岗位分布](docs/screenshots/01-overview.png)
+
+## 3 分钟看项目
+
+当前[在线演示](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#overview)仅仓库所有者可访问。其他读者可以先看下方截图，或按[本地运行](#本地运行)启动静态站点；页面不需要 API Key。
+
+| 用时 | 操作 | 看什么 |
+| --- | --- | --- |
+| 30 秒 | 打开[总览](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#overview) | 10 份虚构简历、分类建议与待复核数量 |
+| 60 秒 | 进入[简历队列](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#queue)，打开待复核条目 | 原文证据、原因、人工确认与说明 |
+| 60 秒 | 查看[离线评测](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#evaluation) | 40 条独立挑战样本、覆盖率、正确率和错误案例 |
+| 30 秒 | 打开[Agent 回放](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#workflow)，切换 F01、F03、R05 | 正常路径、证据不足路径及规则误判；展开工具输入与输出 |
+
+页面导航支持 `#overview`、`#queue`、`#rules`、`#evaluation`、`#workflow`、`#privacy`，本地启动后也能使用相同的链接片段。更完整的讲解见[演示脚本](docs/DEMO.md)。
+
+### 页面截图
+
+| 离线评测 | Agent 工作流回放 |
+| --- | --- |
+| ![40 条虚构案例的离线评测指标](docs/screenshots/02-evaluation.png) | ![四个本地工具的运行轨迹](docs/screenshots/03-workflow.png) |
+
 ## 当前功能
 
 - 10 份虚构简历作为演示样本；支持批量拖入本地文件，单文件上限 5 MB、PDF 上限 20 页。

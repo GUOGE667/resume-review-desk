@@ -31,6 +31,7 @@ function categoryLabel(item) { return item.reviewed ? roleName(item.reviewedRole
 function setView(view) {
   if (!$(`view-${view}`)) return;
   state.activeView = view;
+  if (window.location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
   const names = { overview:'总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线评测',workflow:'Agent 回放',privacy:'数据与边界' };
   const titles = { overview:'招聘审核总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线样本评测',workflow:'离线 Agent 工作流',privacy:'数据与使用边界' };
   document.querySelectorAll('.view').forEach(node => node.classList.toggle('hidden', node.id !== `view-${view}`));
@@ -315,6 +316,8 @@ $('run-workflow').addEventListener('click', renderWorkflow);
 $('reset-session').addEventListener('click', () => { state.roles=cloneRoles(); state.resumes=makeSamples(); $('queue-search').value=''; $('queue-filter').value='all'; renderAll(); setView('overview'); notify('已重置为虚构演示样本。'); });
 $('close-dialog').addEventListener('click', () => $('detail-dialog').close());
 renderAll();
+window.addEventListener('hashchange', () => setView(window.location.hash.slice(1) || 'overview'));
+setView(window.location.hash.slice(1) || 'overview');
 
 // Optional browser WebMCP bridge: exposes the existing review journey without
 // reading full resume text or making an automated hiring decision.
