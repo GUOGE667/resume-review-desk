@@ -7,7 +7,7 @@
   <title>履历台 · 简历分类与人工复核</title>
   <meta name="description" content="离线简历分类与证据审核演示。所有示例人物均为虚构，分类结果由人工复核。">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%2310233d'/%3E%3Cpath d='M18 13h28v38H18z' fill='%23fff' rx='4'/%3E%3Cpath d='M25 24h14M25 32h14M25 40h9' stroke='%232869c7' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=benchmark-1">
 </head>
 <body>
   <div class="app-shell">
@@ -40,7 +40,23 @@
           <div class="table-wrap"><table><thead><tr><th>简历</th><th>来源</th><th>归档建议 / 人工结果</th><th>证据</th><th>状态</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="queue-body"></tbody></table><div class="empty-state hidden" id="queue-empty">没有符合当前筛选条件的简历。</div></div>
         </section>
         <section class="view hidden" id="view-rules" aria-labelledby="rules-heading"><div class="section-heading"><div><span class="eyebrow">ROLE RULES</span><h2 id="rules-heading">岗位规则</h2></div><p>编辑每类岗位的关键词。修改后会重新生成建议，人工确认记录会保留。</p></div><div class="notice compact"><div class="notice-icon">i</div><p>匹配只表示简历文本出现相关证据，不等于符合岗位要求。规则只在当前浏览器会话生效。</p></div><div class="rules-grid" id="rules-grid"></div><div class="rules-actions"><button type="button" class="primary-button" id="save-rules">保存并重新分类</button><button type="button" class="secondary-button" id="reset-rules">恢复示例规则</button></div></section>
-        <section class="view hidden" id="view-evaluation" aria-labelledby="eval-heading"><div class="section-heading"><div><span class="eyebrow">OFFLINE EVALUATION</span><h2 id="eval-heading">离线样本评测</h2></div><p>使用仓库内 10 份人工编写的虚构简历；结果随岗位规则变化。</p></div><div class="eval-hero"><div><span>当前规则的样本归档一致率</span><strong id="eval-accuracy">—</strong><p id="eval-count">—</p></div><div><span>应进入人工复核的样本</span><strong id="eval-review">—</strong><p>包含证据不足和岗位证据相同的案例</p></div></div><div class="panel eval-panel"><div class="panel-head"><div><span class="eyebrow">CASE BY CASE</span><h3>逐条结果</h3></div><span class="mini-tag">仅虚构样本</span></div><div id="eval-rows"></div></div><p class="eval-disclaimer">这是小规模规则回归测试，不能代表真实招聘场景的准确率、公平性或候选人质量。人工审核仍是必要步骤。</p></section>
+        <section class="view hidden" id="view-evaluation" aria-labelledby="eval-heading">
+          <div class="section-heading"><div><span class="eyebrow">OFFLINE EVALUATION</span><h2 id="eval-heading">离线挑战集评测</h2></div><p>40 份独立编写的虚构文本；不用于配置默认规则。修改岗位规则后，指标会重新计算。</p></div>
+          <div class="notice compact"><div class="notice-icon">i</div><p>这是岗位归档的规则基线，不是候选人能力评分。预设标签由项目作者编写；所有案例和计算方法都在仓库中公开。</p></div>
+          <div class="eval-hero benchmark-hero">
+            <div><span>预设结果一致率</span><strong id="eval-accuracy">—</strong><p id="eval-count">—</p></div>
+            <div><span>自动建议覆盖率</span><strong id="eval-coverage">—</strong><p>其余案例交给人工复核</p></div>
+            <div><span>自动建议正确率</span><strong id="eval-auto-accuracy">—</strong><p>只统计给出岗位建议的案例</p></div>
+            <div><span>应复核案例召回率</span><strong id="eval-review">—</strong><p>预设待复核案例中成功升级的比例</p></div>
+          </div>
+          <p class="benchmark-note" id="eval-summary">—</p>
+          <div class="benchmark-grid">
+            <section class="panel"><div class="panel-head"><div><span class="eyebrow">PER ROLE</span><h3>各岗位指标</h3></div></div><div class="table-wrap"><table class="benchmark-table"><thead><tr><th>预设岗位</th><th>样本数</th><th>精确率</th><th>召回率</th><th>F1</th></tr></thead><tbody id="eval-role-body"></tbody></table></div><p class="panel-note">精确率指该岗位建议中正确的比例；召回率指该岗位样本中被正确归档的比例。待复核会计入漏检。</p></section>
+            <section class="panel"><div class="panel-head"><div><span class="eyebrow">CONFUSION MATRIX</span><h3>预设 × 建议</h3></div></div><div class="table-wrap"><table class="benchmark-table"><thead><tr id="eval-confusion-head"></tr></thead><tbody id="eval-confusion-body"></tbody></table></div><p class="panel-note">行是预设标签，列是规则建议；右下角代表应复核且确实进入人工复核。</p></section>
+          </div>
+          <section class="panel eval-panel"><div class="panel-head"><div><span class="eyebrow">ERROR ANALYSIS</span><h3>逐条检查错误</h3></div><span class="mini-tag" id="eval-error-count">—</span></div><div id="eval-rows"></div></section>
+          <p class="eval-disclaimer">首页的 10 份演示简历仍用于功能回归，和这 40 份挑战样本分开。此处结果仅说明虚构案例上的规则表现，不代表真实招聘准确率、公平性或候选人质量。</p>
+        </section>
         <section class="view hidden" id="view-privacy" aria-labelledby="privacy-heading"><div class="section-heading"><div><span class="eyebrow">DATA & BOUNDARIES</span><h2 id="privacy-heading">数据与使用边界</h2></div><p>清楚说明网站目前做了什么，以及它的局限。</p></div><div class="privacy-grid"><article class="panel"><span class="privacy-index">01</span><h3>数据留在浏览器会话</h3><p>导入文件在本地读取，不传到服务器，也不保存到云端或 localStorage。刷新页面后导入文件与人工复核记录会消失。演示样本全部为虚构人物。</p></article><article class="panel"><span class="privacy-index">02</span><h3>只给归档建议</h3><p>系统依据可编辑关键词提取原文证据，不能判断能力、真实性或岗位适配度。证据不足或存在歧义时进入人工复核队列，不自动淘汰候选人。</p></article><article class="panel"><span class="privacy-index">03</span><h3>没有付费模型调用</h3><p>当前版本使用确定性规则和离线样本。页面不读取 OpenAI 密钥，也没有模型评测结果；后续若接入模型，应先建立有标注的评测集。</p></article><article class="panel"><span class="privacy-index">04</span><h3>部署前仍需评估</h3><p>招聘分类可能影响就业机会。真实企业使用前，需要依据适用地区要求评估隐私、无障碍、公平性、人工监督与申诉流程。</p></article></div><div class="danger-zone"><div><strong>清空当前会话</strong><p>移除所有导入文件与复核记录，恢复虚构演示样本和默认规则。</p></div><button type="button" class="secondary-button" id="reset-session">重置演示</button></div></section>
       </main>
       <footer class="footer">履历台 · 作品集原型 <span>·</span> 虚构演示数据 <span>·</span> 无自动录用或淘汰决策</footer>
@@ -49,6 +65,6 @@
   <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.mjs"></script>
+  <script type="module" src="./app.mjs?v=benchmark-1"></script>
 </body>
 </html>

@@ -1,5 +1,7 @@
-import { DEFAULT_ROLES, classifyResume, evaluateSamples } from './classifier.mjs';
+import { DEFAULT_ROLES, classifyResume } from './classifier.mjs';
 import { DEMO_RESUMES } from './demo-data.mjs';
+import { BENCHMARK_CASES } from './benchmark-data.mjs';
+import { evaluateBenchmark } from './benchmark.mjs';
 
 const $ = id => document.getElementById(id);
 const roleName = id => state.roles.find(role => role.id === id)?.name || '待定';
@@ -155,16 +157,47 @@ function saveRules() {
   state.roles = next; renderAll(); renderRules(); notify('岗位规则已更新，归档建议已重新计算。');
 }
 function renderEvaluation() {
-  const result = evaluateSamples(DEMO_RESUMES, state.roles);
-  $('eval-accuracy').textContent = `${Math.round(result.accuracy * 100)}%`;
-  $('eval-count').textContent = `${result.correct} / ${result.total} 份虚构样本与预设标签一致`;
-  $('eval-review').textContent = `${result.reviewCorrect} / ${result.reviewTotal}`;
+  const result = evaluateBenchmark(BENCHMARK_CASES, state.roles);
+  const percent = value => `${Math.round(value * 1000) / 10}%`;
+  const label = id => id === 'review' ? '待复核' : roleName(id);
+  $('eval-accuracy').textContent = percent(result.exactAccuracy);
+  $('eval-count').textContent = `${result.correct} / ${result.total} 份与预设标签一致`;
+  $('eval-coverage').textContent = percent(result.autoCoverage);
+  $('eval-auto-accuracy').textContent = percent(result.autoAccuracy);
+  $('eval-review').textContent = percent(result.reviewRecall);
+  $('eval-summary').textContent = `岗位宏平均 F1：${percent(result.macroF1)} · 复核精确率：${percent(result.reviewPrecision)}。覆盖率与自动建议正确率应一起看，避免只通过“多交给人工”提高正确率。`;
+
+  const roleBody = $('eval-role-body'); roleBody.replaceChildren();
+  for (const role of result.roleMetrics) {
+    const row = el('tr');
+    for (const value of [role.name, role.support, percent(role.precision), percent(role.recall), percent(role.f1)]) row.append(el('td', value));
+    roleBody.append(row);
+  }
+
+  const matrixHead = $('eval-confusion-head'); matrixHead.replaceChildren();
+  const corner = el('th', '预设 \\ 建议'); corner.scope = 'col'; matrixHead.append(corner);
+  for (const id of result.labels) { const th = el('th', label(id)); th.scope = 'col'; matrixHead.append(th); }
+  const matrixBody = $('eval-confusion-body'); matrixBody.replaceChildren();
+  for (const expected of result.labels) {
+    const row = el('tr'); const th = el('th', label(expected)); th.scope = 'row'; row.append(th);
+    for (const predicted of result.labels) {
+      const count = result.confusion[expected][predicted];
+      row.append(el('td', count, expected === predicted ? 'matrix-diagonal' : count ? 'matrix-error' : ''));
+    }
+    matrixBody.append(row);
+  }
+
   const box = $('eval-rows'); box.replaceChildren();
-  for (const item of DEMO_RESUMES) {
-    const predicted = classifyResume(item.text, state.roles).suggestion;
-    const row = el('div', undefined, 'eval-case');
-    row.append(el('strong', item.name), el('span', `预设：${item.expected ? roleName(item.expected) : '待复核'}`), el('span', `规则：${predicted ? roleName(predicted) : '待复核'}`), el('span', predicted === item.expected ? '一致' : '不一致', predicted === item.expected ? 'correct' : 'incorrect'));
-    box.append(row);
+  const errors = result.rows.filter(row => !row.correct);
+  $('eval-error-count').textContent = `${errors.length} / ${result.total} 条需分析`;
+  if (!errors.length) box.append(el('p', '当前规则没有与预设标签不一致的案例。', 'panel-note'));
+  for (const row of errors) {
+    const item = BENCHMARK_CASES.find(candidate => candidate.id === row.id);
+    const card = el('div', undefined, 'benchmark-error');
+    const head = el('div', undefined, 'benchmark-error-head');
+    head.append(el('strong', `${row.id} · ${row.scenario}`), el('span', `预设 ${label(row.expected)} → 建议 ${label(row.predicted)}`, 'incorrect'));
+    card.append(head, el('p', item.text), el('small', `规则原因：${row.reason}`));
+    box.append(card);
   }
 }
 function renderAll() { renderOverview(); renderQueue(); renderEvaluation(); }
