@@ -36,11 +36,11 @@
         </section>
         <section class="view hidden" id="view-queue" aria-labelledby="queue-heading">
           <div class="section-heading"><div><span class="eyebrow">RESUME INBOX</span><h2 id="queue-heading">简历队列</h2></div><p>点击条目查看匹配到的原文片段，再进行人工确认。</p></div>
-          <div class="queue-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">搜索简历</span><input id="queue-search" type="search" placeholder="搜索编号、名称或正文关键词"></label><select id="queue-filter" aria-label="筛选状态"><option value="all">全部状态</option><option value="review">待复核</option><option value="suggested">有分类建议</option><option value="approved">人工已确认</option></select><button type="button" class="secondary-button" id="export-csv">导出 CSV</button></div>
+          <div class="queue-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">搜索简历</span><input id="queue-search" type="search" placeholder="搜索编号、名称或正文关键词"></label><select id="queue-filter" aria-label="筛选状态"><option value="all">全部状态</option><option value="review">待复核</option><option value="suggested">有分类建议</option><option value="approved">人工已确认</option></select><button type="button" class="secondary-button" id="export-csv">导出当前记录</button><button type="button" class="secondary-button" id="export-audit">导出复核日志</button></div>
           <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="选择或拖入简历文件"><div class="upload-symbol">＋</div><div><strong>拖入简历，或点击选择文件</strong><p>支持可提取文本的 PDF、TXT、MD；单个文件不超过 5 MB。文件仅在当前会话中处理。</p></div></div>
           <div class="table-wrap"><table><thead><tr><th>简历</th><th>来源</th><th>归档建议 / 人工结果</th><th>证据</th><th>状态</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="queue-body"></tbody></table><div class="empty-state hidden" id="queue-empty">没有符合当前筛选条件的简历。</div></div>
         </section>
-        <section class="view hidden" id="view-rules" aria-labelledby="rules-heading"><div class="section-heading"><div><span class="eyebrow">ROLE RULES</span><h2 id="rules-heading">岗位规则</h2></div><p>编辑每类岗位的关键词。修改后会重新生成建议，人工确认记录会保留。</p></div><div class="notice compact"><div class="notice-icon">i</div><p>匹配只表示简历文本出现相关证据，不等于符合岗位要求。规则只在当前浏览器会话生效。</p></div><div class="rules-grid" id="rules-grid"></div><div class="rules-actions"><button type="button" class="primary-button" id="save-rules">保存并重新分类</button><button type="button" class="secondary-button" id="reset-rules">恢复示例规则</button></div></section>
+        <section class="view hidden" id="view-rules" aria-labelledby="rules-heading"><div class="section-heading"><div><span class="eyebrow">ROLE RULES</span><h2 id="rules-heading">岗位规则 · <span id="rule-version">v1</span></h2></div><p>编辑每类岗位的关键词。修改后会重新生成建议，人工复核历史会保留当时的规则快照。</p></div><div class="notice compact"><div class="notice-icon">i</div><p>匹配只表示简历文本出现相关证据，不等于符合岗位要求。规则只在当前浏览器会话生效。</p></div><div class="rules-grid" id="rules-grid"></div><div class="rules-actions"><button type="button" class="primary-button" id="save-rules">保存并重新分类</button><button type="button" class="secondary-button" id="reset-rules">恢复示例规则</button></div></section>
         <section class="view hidden" id="view-evaluation" aria-labelledby="eval-heading">
           <div class="section-heading"><div><span class="eyebrow">OFFLINE EVALUATION</span><h2 id="eval-heading">离线挑战集评测</h2></div><p>40 份独立编写的虚构文本；不用于配置默认规则。修改岗位规则后，指标会重新计算。</p></div>
           <div class="notice compact"><div class="notice-icon">i</div><p>这是岗位归档的规则基线，不是候选人能力评分。预设标签由项目作者编写；所有案例和计算方法都在仓库中公开。</p></div>
@@ -78,6 +78,6 @@
   <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.mjs?v=portfolio-1"></script>
+  <script type="module" src="./app.mjs?v=audit-1"></script>
 </body>
 </html>

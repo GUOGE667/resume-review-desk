@@ -3,12 +3,13 @@ import { DEMO_RESUMES } from './demo-data.mjs';
 import { BENCHMARK_CASES } from './benchmark-data.mjs';
 import { evaluateBenchmark } from './benchmark.mjs';
 import { runOfflineWorkflow } from './workflow.mjs';
+import { auditExportRows, createReviewEntry, latestReview } from './review-audit.mjs';
 
 const $ = id => document.getElementById(id);
 const roleName = id => state.roles.find(role => role.id === id)?.name || '待定';
 const cloneRoles = () => DEFAULT_ROLES.map(role => ({ ...role, keywords:[...role.keywords] }));
-const makeSamples = () => DEMO_RESUMES.map(item => ({ ...item, source:'虚构样本', reviewed:false, reviewedRole:null, reviewNote:'' }));
-const state = { roles:cloneRoles(), resumes:makeSamples(), activeView:'overview', selectedId:null };
+const makeSamples = () => DEMO_RESUMES.map(item => ({ ...item, source:'虚构样本', reviewHistory:[] }));
+const state = { roles:cloneRoles(), ruleVersion:1, resumes:makeSamples(), activeView:'overview', selectedId:null };
 let toastTimer;
 
 function el(tag, text, className) {
@@ -25,9 +26,11 @@ function notify(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 4200);
 }
 function analysis(item) { return classifyResume(item.text, state.roles); }
-function statusOf(item) { return item.reviewed ? 'approved' : analysis(item).needsReview ? 'review' : 'suggested'; }
-function statusLabel(item) { return item.reviewed ? '人工已确认' : analysis(item).needsReview ? '待人工复核' : '有分类建议'; }
-function categoryLabel(item) { return item.reviewed ? roleName(item.reviewedRole) : analysis(item).label; }
+function decisionLabel(id) { return id === 'undetermined' ? '仍待进一步确认' : id ? roleName(id) : '无岗位建议'; }
+function confirmedReview(item) { const review = latestReview(item); return review && review.confirmedRole !== 'undetermined' ? review : null; }
+function statusOf(item) { if (confirmedReview(item)) return 'approved'; return latestReview(item)?.confirmedRole === 'undetermined' || analysis(item).needsReview ? 'review' : 'suggested'; }
+function statusLabel(item) { return confirmedReview(item) ? '人工已确认' : latestReview(item)?.confirmedRole === 'undetermined' ? '待进一步确认' : analysis(item).needsReview ? '待人工复核' : '有分类建议'; }
+function categoryLabel(item) { const review = latestReview(item); return review ? decisionLabel(review.confirmedRole) : analysis(item).label; }
 function setView(view) {
   if (!$(`view-${view}`)) return;
   state.activeView = view;
@@ -49,10 +52,10 @@ function renderOverview() {
   $('metric-total').textContent = state.resumes.length;
   $('metric-review').textContent = state.resumes.filter(item => statusOf(item) === 'review').length;
   $('metric-suggested').textContent = state.resumes.filter(item => statusOf(item) === 'suggested').length;
-  $('metric-approved').textContent = state.resumes.filter(item => item.reviewed).length;
+  $('metric-approved').textContent = state.resumes.filter(item => confirmedReview(item)).length;
   const counts = Object.fromEntries(state.roles.map(role => [role.id, 0]));
   for (const item of state.resumes) {
-    const id = item.reviewed ? item.reviewedRole : analysis(item).suggestion;
+    const id = confirmedReview(item)?.confirmedRole || (!latestReview(item) ? analysis(item).suggestion : null);
     if (id && Object.hasOwn(counts, id)) counts[id]++;
   }
   const maximum = Math.max(1, ...Object.values(counts));
@@ -93,7 +96,7 @@ function renderQueue() {
     const nameCell = el('td'); nameCell.append(el('strong', item.name), el('span', item.id, 'muted'));
     tr.append(nameCell, el('td', item.source));
     const category = el('td'); category.append(el('strong', categoryLabel(item)));
-    if (item.reviewed) category.append(el('span', '人工结果', 'muted'));
+    if (latestReview(item)) category.append(el('span', `人工记录 · ${item.reviewHistory.length} 次`, 'muted'));
     tr.append(category, el('td', `${result.evidence.length} 处`));
     const status = el('td'); status.append(el('span', statusLabel(item), `status ${statusOf(item)}`)); tr.append(status);
     const action = el('td'); const button = el('button', '查看详情', 'row-open'); button.type='button'; button.addEventListener('click', () => openDetail(item.id)); action.append(button); tr.append(action);
@@ -108,7 +111,7 @@ function openDetail(id) {
   $('detail-title').textContent = item.name;
   const body = el('div', undefined, 'detail-body');
   const summary = el('div', undefined, 'detail-summary');
-  for (const value of [item.id, item.source, `建议：${result.label}`, statusLabel(item)]) summary.append(el('span', value));
+  for (const value of [item.id, item.source, `当前规则 v${state.ruleVersion}`, `建议：${result.label}`, statusLabel(item)]) summary.append(el('span', value));
   body.append(summary);
   const evidenceSection = el('section', undefined, 'detail-section'); evidenceSection.append(el('h3', '分类依据'));
   evidenceSection.append(el('p', result.reason + '。下列引文直接截取自当前简历文本。'));
@@ -128,22 +131,38 @@ function openDetail(id) {
   const placeholder = el('option', '请选择'); placeholder.value = ''; select.append(placeholder);
   for (const role of state.roles) { const option = el('option', role.name); option.value = role.id; select.append(option); }
   const pending = el('option', '仍待进一步确认'); pending.value = 'undetermined'; select.append(pending);
-  select.value = item.reviewed ? item.reviewedRole : (result.suggestion || '');
+  const previous = latestReview(item);
+  select.value = previous ? previous.confirmedRole : (result.suggestion || '');
   categoryLabelEl.append(select);
-  const noteLabel = el('label', '复核说明'); const note = el('textarea'); note.placeholder = '记录依据或需要补充的信息'; note.maxLength = 500; note.value = item.reviewNote; noteLabel.append(note);
+  const noteLabel = el('label', '本次复核理由（必填）'); const note = el('textarea'); note.placeholder = '说明核对依据、修改原因或仍需补充的信息'; note.maxLength = 500; noteLabel.append(note);
   controls.append(categoryLabelEl, noteLabel); reviewSection.append(controls);
-  const actions = el('div', undefined, 'review-actions'); const save = el('button', item.reviewed ? '更新人工结果' : '确认人工结果', 'primary-button'); save.type='button';
+  const actions = el('div', undefined, 'review-actions'); const save = el('button', previous ? '新增复核记录' : '确认人工结果', 'primary-button'); save.type='button';
   save.addEventListener('click', () => {
     if (!select.value) { notify('请先选择归档类别或“仍待进一步确认”。'); select.focus(); return; }
-    if ((select.value !== result.suggestion || select.value === 'undetermined') && !note.value.trim()) { notify('修改规则建议或暂缓归档时，请填写复核说明。'); note.focus(); return; }
-    item.reviewed=true; item.reviewedRole=select.value; item.reviewNote=note.value.trim();
+    if (!note.value.trim()) { notify('请填写本次复核理由。'); note.focus(); return; }
+    const entry = createReviewEntry({ item, suggestion:result.suggestion, confirmedRole:select.value, reason:note.value, ruleVersion:state.ruleVersion, roles:state.roles });
+    item.reviewHistory.push(entry);
     renderAll(); $('detail-dialog').close(); notify('人工复核结果已记录在当前会话。');
   });
-  actions.append(save); reviewSection.append(actions); body.append(reviewSection); content.append(body);
+  actions.append(save); reviewSection.append(actions); body.append(reviewSection);
+  const historySection = el('section', undefined, 'detail-section review-history');
+  historySection.append(el('h3', `复核历史 · ${item.reviewHistory.length} 次`));
+  if (!item.reviewHistory.length) historySection.append(el('p', '当前会话尚无人工复核记录。'));
+  for (const entry of [...item.reviewHistory].reverse()) {
+    const card = el('article', undefined, 'review-history-card');
+    card.append(el('strong', `第 ${entry.sequence} 次 · ${new Date(entry.timestamp).toLocaleString('zh-CN', { hour12:false })} · 规则 v${entry.ruleVersion}`));
+    card.append(el('p', `规则建议：${decisionLabel(entry.suggestedRole)} · 修改前：${decisionLabel(entry.previousRole)} → 人工结果：${decisionLabel(entry.confirmedRole)}`));
+    card.append(el('p', `理由：${entry.reason}`));
+    const rules = el('details'); rules.append(el('summary', '查看当时的规则快照'));
+    rules.append(el('pre', entry.ruleSnapshot.map(role => `${role.name}：${role.keywords.join('、')}`).join('\n')));
+    card.append(rules); historySection.append(card);
+  }
+  body.append(historySection); content.append(body);
   $('detail-dialog').showModal();
 }
 
 function renderRules() {
+  $('rule-version').textContent = `v${state.ruleVersion}`;
   const grid = $('rules-grid'); grid.replaceChildren();
   for (const role of state.roles) {
     const card = el('div', undefined, 'rule-card'); card.append(el('h3', role.name), el('p', '关键词用逗号分隔；建议至少保留两项。'));
@@ -157,7 +176,8 @@ function saveRules() {
     return { ...role, keywords };
   });
   if (next.some(role => role.keywords.length < 2)) { notify('每个岗位类别至少保留两个关键词。'); return; }
-  state.roles = next; renderAll(); renderRules(); notify('岗位规则已更新，归档建议已重新计算。');
+  if (JSON.stringify(next) === JSON.stringify(state.roles)) { notify('岗位规则没有变化。'); return; }
+  state.roles = next; state.ruleVersion++; renderAll(); renderRules(); notify(`岗位规则已更新到 v${state.ruleVersion}，归档建议已重新计算。`);
 }
 function renderEvaluation() {
   const result = evaluateBenchmark(BENCHMARK_CASES, state.roles);
@@ -271,7 +291,7 @@ async function importFiles(files) {
       const text = (await readFile(file)).trim();
       if (text.length < 30) throw new Error(`${file.name} 没有足够的可提取文本；扫描件请先 OCR。`);
       const id = `local-${crypto.randomUUID().slice(0, 8)}`;
-      state.resumes.unshift({ id, name:file.name, text:text.slice(0, 150_000), source:'本地导入', reviewed:false, reviewedRole:null, reviewNote:'' });
+      state.resumes.unshift({ id, name:file.name, text:text.slice(0, 150_000), source:'本地导入', reviewHistory:[] });
       imported++;
     } catch (error) { errors.push(error.message || `${file.name} 导入失败。`); }
   }
@@ -284,17 +304,28 @@ function csvCell(value) {
   if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return `"${text.replaceAll('"', '""')}"`;
 }
-function exportCsv() {
-  const header = ['编号','显示名称','来源','规则建议','人工结果','状态','证据关键词','复核说明'];
-  const rows = state.resumes.map(item => {
-    const result = analysis(item);
-    return [item.id,item.name,item.source,result.label,item.reviewed ? roleName(item.reviewedRole) : '',statusLabel(item),result.evidence.map(hit => hit.keyword).join('、'),item.reviewNote];
-  });
+function downloadCsv(filename, header, rows) {
   const csv = '\ufeff' + [header,...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
-  const a = el('a'); a.href=url; a.download='resume-review-records.csv'; a.click();
+  const a = el('a'); a.href=url; a.download=filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  notify('已导出当前会话的分类与复核记录（不含简历正文）。');
+}
+function exportCsv() {
+  const header = ['编号','显示名称','来源','当前规则版本','当前规则建议','人工结果','状态','证据关键词','最近复核规则版本','最近复核前类别','最近复核时间','最近复核理由','复核次数'];
+  const rows = state.resumes.map(item => {
+    const result = analysis(item);
+    const review = latestReview(item);
+    return [item.id,item.name,item.source,state.ruleVersion,result.label,review ? decisionLabel(review.confirmedRole) : '',statusLabel(item),result.evidence.map(hit => hit.keyword).join('、'),review?.ruleVersion || '',review ? decisionLabel(review.previousRole) : '',review?.timestamp || '',review?.reason || '',item.reviewHistory.length];
+  });
+  downloadCsv('resume-review-records.csv', header, rows);
+  notify('已导出当前会话记录（不含简历正文）。');
+}
+function exportAuditCsv() {
+  const header = ['编号','显示名称','来源','复核序号','复核时间 ISO','规则版本','规则建议','修改前类别','人工结果','复核理由','当时规则快照 JSON'];
+  const rows = auditExportRows(state.resumes, decisionLabel);
+  if (!rows.length) { notify('当前会话还没有人工复核记录。'); return; }
+  downloadCsv('resume-review-audit.csv', header, rows);
+  notify(`已导出 ${rows.length} 条复核日志（不含简历正文）。`);
 }
 
 document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
@@ -309,11 +340,12 @@ zone.addEventListener('drop', event => { event.preventDefault(); zone.classList.
 $('queue-search').addEventListener('input', renderQueue);
 $('queue-filter').addEventListener('change', renderQueue);
 $('save-rules').addEventListener('click', saveRules);
-$('reset-rules').addEventListener('click', () => { state.roles=cloneRoles(); renderAll(); renderRules(); notify('已恢复示例岗位规则。'); });
+$('reset-rules').addEventListener('click', () => { const next=cloneRoles(); if (JSON.stringify(next) === JSON.stringify(state.roles)) { notify('当前已是示例规则。'); return; } state.roles=next; state.ruleVersion++; renderAll(); renderRules(); notify(`已恢复示例规则，当前版本 v${state.ruleVersion}。`); });
 $('export-csv').addEventListener('click', exportCsv);
+$('export-audit').addEventListener('click', exportAuditCsv);
 $('workflow-case').addEventListener('change', renderWorkflow);
 $('run-workflow').addEventListener('click', renderWorkflow);
-$('reset-session').addEventListener('click', () => { state.roles=cloneRoles(); state.resumes=makeSamples(); $('queue-search').value=''; $('queue-filter').value='all'; renderAll(); setView('overview'); notify('已重置为虚构演示样本。'); });
+$('reset-session').addEventListener('click', () => { state.roles=cloneRoles(); state.ruleVersion=1; state.resumes=makeSamples(); $('queue-search').value=''; $('queue-filter').value='all'; renderAll(); setView('overview'); notify('已重置为虚构演示样本，复核历史已清空。'); });
 $('close-dialog').addEventListener('click', () => $('detail-dialog').close());
 renderAll();
 window.addEventListener('hashchange', () => setView(window.location.hash.slice(1) || 'overview'));

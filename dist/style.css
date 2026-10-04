@@ -51,3 +51,9 @@
 .workflow-result .workflow-comparison{grid-column:1/-1;margin:4px 0 0;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:750}
 .workflow-comparison.agrees{background:#eaf7f0;color:#25765e}
 .workflow-comparison.differs{background:#fff5e4;color:#9b621c}
+.review-history-card{border:1px solid #e1e8ef;background:#f9fbfd;border-radius:10px;padding:12px 14px;margin:10px 0}
+.review-history-card strong{font-size:12px;color:#28435e}
+.review-history-card p{font-size:11px;color:#60758a;line-height:1.65;margin:7px 0;overflow-wrap:anywhere}
+.review-history-card details{font-size:11px;color:#4274aa;margin-top:8px}
+.review-history-card summary{cursor:pointer;width:max-content;max-width:100%}
+.review-history-card pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;border:1px solid #e1e8ef;border-radius:7px;color:#526a82;padding:10px;font-size:11px;line-height:1.6}
