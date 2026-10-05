@@ -82,7 +82,7 @@
           <section class="panel local-save-panel" aria-labelledby="local-save-heading">
             <div class="panel-head"><div><span class="eyebrow">LOCAL SAVE</span><h3 id="local-save-heading">本机保存与导出</h3></div></div>
             <p id="local-save-status" role="status">—</p>
-            <p class="panel-note">开启后，只保存岗位规则和内置虚构样本的复核记录；导入文件的名称、正文及复核理由始终不持久化。旧版可能包含导入正文的保存会在打开页面时清除。本机保存仍可被同一浏览器用户及同源页面读取，不应用于正式招聘资料。</p>
+            <p class="panel-note">开启后，只保存岗位规则和内置虚构样本的复核记录；导入文件的名称、正文及复核理由始终不持久化。旧版可能包含导入正文的保存会在打开页面时清除。本机保存仍可被同一浏览器用户及同源页面读取，不应用于正式招聘资料。导出的 CSV 含显示名称和复核理由，下载后请妥善保管。</p>
             <div class="local-save-actions"><button type="button" class="primary-button" id="enable-local-save">开启虚构样本复核保存</button><button type="button" class="secondary-button" id="export-csv-privacy">导出当前记录 CSV</button><button type="button" class="secondary-button" id="export-audit-privacy">导出复核日志 CSV</button></div>
           </section>
           <div class="danger-zone"><div><strong>清除本机保存与当前数据</strong><p>移除本网站的本机保存、导入文件与复核记录，恢复虚构演示样本和默认规则。已下载的 CSV 不受影响。</p></div><button type="button" class="secondary-button" id="reset-session">清除并重置</button></div>
@@ -94,6 +94,6 @@
   <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.mjs?v=privacy-5"></script>
+  <script type="module" src="./app.mjs?v=csv-6"></script>
 </body>
 </html>

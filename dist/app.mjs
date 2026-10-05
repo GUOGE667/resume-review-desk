@@ -6,6 +6,7 @@ import { DEFAULT_ROLES as BASELINE_ROLES, classifyResume as classifyBaseline } f
 import { runOfflineWorkflow } from './workflow.mjs';
 import { auditExportRows, createReviewEntry, latestReview } from './review-audit.mjs';
 import { clearSnapshot, loadSnapshot, purgeLegacySnapshot, saveSnapshot } from './local-save.mjs?v=privacy-5';
+import { serializeCsv } from './csv-export.mjs';
 
 const $ = id => document.getElementById(id);
 const roleName = id => state.roles.find(role => role.id === id)?.name || '待定';
@@ -335,13 +336,8 @@ async function importFiles(files) {
   notify(`${imported} 份简历已导入当前页面，刷新后会清除；需要留存请先导出日志。${errors.length ? ` ${errors.length} 份失败：${errors[0]}` : ''}`);
 }
 
-function csvCell(value) {
-  let text = String(value ?? '');
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
-}
 function downloadCsv(filename, header, rows) {
-  const csv = '\ufeff' + [header,...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+  const csv = serializeCsv(header, rows);
   const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
   const a = el('a'); a.href=url; a.download=filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);

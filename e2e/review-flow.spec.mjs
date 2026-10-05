@@ -65,6 +65,31 @@ test('不支持的文件格式给出明确提示', async ({ page }) => {
   await expect(page.locator('#queue-body tr').filter({ hasText: 'unsupported.exe' })).toHaveCount(0);
 });
 
+test('两个 CSV 导出把不可信文件名与复核理由保留为文本', async ({ page }) => {
+  await page.goto('/#queue');
+  await page.locator('#file-input').setInputFiles({
+    name:'=1+1.txt',
+    mimeType:'text/plain',
+    buffer:Buffer.from('Fictional resume built React TypeScript CSS components for an internal demo.'),
+  });
+  const row = page.locator('#queue-body tr').filter({ hasText:'=1+1.txt' });
+  await row.getByRole('button', { name:'查看详情' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
+  await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('=1+1');
+  await dialog.getByRole('button', { name:'确认人工结果' }).click();
+
+  for (const buttonName of ['导出当前记录', '导出复核日志']) {
+    const downloadEvent = page.waitForEvent('download');
+    await page.getByRole('button', { name:buttonName, exact:true }).click();
+    const download = await downloadEvent;
+    const csv = await readFile(await download.path(), 'utf8');
+    expect(csv).toContain('"\'=1+1.txt"');
+    expect(csv).toContain('"\'=1+1"');
+    expect(csv).not.toContain('"=1+1.txt"');
+  }
+});
+
 test('评测页显示固定基线、改进结果与剩余错误', async ({ page }) => {
   await page.goto('/#evaluation');
   const comparison = page.locator('#eval-comparison-body');
