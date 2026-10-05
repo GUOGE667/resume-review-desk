@@ -76,30 +76,44 @@ test('评测页显示固定基线、改进结果与剩余错误', async ({ page 
   await expect(page.locator('#eval-error-count')).toHaveText('3 / 40 条需分析');
 });
 
-test('主动开启本机保存后可刷新恢复、导出和清除虚构复核记录', async ({ page }) => {
+test('本机保存只恢复内置虚构样本，导入文件及旧版快照不持久化', async ({ page }) => {
   await page.goto('/#queue');
+  await page.evaluate(() => localStorage.setItem('resume-review-desk:local-snapshot:v1', '{"resumes":[{"text":"OLD_PRIVATE_TEXT"}]}'));
+  await page.reload();
+  expect(await page.evaluate(() => localStorage.getItem('resume-review-desk:local-snapshot:v1'))).toBeNull();
   await page.locator('#file-input').setInputFiles({
     name:'fictional-local.txt',
     mimeType:'text/plain',
-    buffer:Buffer.from('Fictional candidate built React TypeScript CSS components for a demo project.'),
+    buffer:Buffer.from('PRIVATE_IMPORT_TEXT built React TypeScript CSS components for a demo project.'),
   });
   const row = page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' });
   await expect(row).toBeVisible();
   await row.getByRole('button', { name:'查看详情' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
-  await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('虚构材料已人工核对。');
+  await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('PRIVATE_IMPORT_REVIEW');
+  await dialog.getByRole('button', { name:'确认人工结果' }).click();
+  const demoRow = page.locator('#queue-body tr').filter({ hasText:'林晨（虚构）' });
+  await demoRow.getByRole('button', { name:'查看详情' }).click();
+  await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
+  await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('虚构样本已核对。');
   await dialog.getByRole('button', { name:'确认人工结果' }).click();
   await page.getByRole('button', { name:'数据与边界' }).click();
-  await page.getByRole('button', { name:'开启本机保存（含简历正文）' }).click();
-  await expect(page.locator('#local-save-status')).toContainText('本机保存已开启');
+  await page.getByRole('button', { name:'开启虚构样本复核保存' }).click();
+  await expect(page.locator('#local-save-status')).toContainText('仅虚构样本');
+  const stored = await page.evaluate(() => localStorage.getItem('resume-review-desk:local-snapshot:v2'));
+  expect(stored).not.toContain('PRIVATE_IMPORT_TEXT');
+  expect(stored).not.toContain('fictional-local.txt');
+  expect(stored).not.toContain('PRIVATE_IMPORT_REVIEW');
+  expect(stored).toContain('虚构样本已核对。');
 
   await page.reload();
-  await expect(page.locator('#local-save-status')).toContainText('本机保存已开启');
-  await page.getByRole('button', { name:'简历队列 11' }).click();
-  await expect(row).toContainText('人工已确认');
-  await row.getByRole('button', { name:'查看详情' }).click();
-  await expect(dialog.getByText('理由：虚构材料已人工核对。')).toBeVisible();
+  await expect(page.locator('#local-save-status')).toContainText('仅虚构样本');
+  await page.getByRole('button', { name:'简历队列 10' }).click();
+  await expect(page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' })).toHaveCount(0);
+  await expect(demoRow).toContainText('人工已确认');
+  await demoRow.getByRole('button', { name:'查看详情' }).click();
+  await expect(dialog.getByText('理由：虚构样本已核对。')).toBeVisible();
   await dialog.getByRole('button', { name:'关闭详情' }).click();
 
   await page.getByRole('button', { name:'数据与边界' }).click();
@@ -107,12 +121,15 @@ test('主动开启本机保存后可刷新恢复、导出和清除虚构复核�
   await page.getByRole('button', { name:'导出复核日志 CSV' }).click();
   const download = await downloadEvent;
   const csv = await readFile(await download.path(), 'utf8');
-  expect(csv).toContain('虚构材料已人工核对。');
+  expect(csv).toContain('虚构样本已核对。');
+  expect(csv).not.toContain('PRIVATE_IMPORT_REVIEW');
 
   await page.getByRole('button', { name:'清除并重置' }).click();
   await page.reload();
   await page.getByRole('button', { name:'简历队列 10' }).click();
   await expect(page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' })).toHaveCount(0);
+  await expect(page.locator('#queue-body tr').filter({ hasText:'林晨（虚构）' })).not.toContainText('人工已确认');
   await page.getByRole('button', { name:'数据与边界' }).click();
   await expect(page.locator('#local-save-status')).toContainText('本机保存未开启');
+  expect(await page.evaluate(() => localStorage.getItem('resume-review-desk:local-snapshot:v2'))).toBeNull();
 });

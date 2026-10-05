@@ -37,7 +37,7 @@
         <section class="view hidden" id="view-queue" aria-labelledby="queue-heading">
           <div class="section-heading"><div><span class="eyebrow">RESUME INBOX</span><h2 id="queue-heading">简历队列</h2></div><p>点击条目查看匹配到的原文片段，再进行人工确认。</p></div>
           <div class="queue-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">搜索简历</span><input id="queue-search" type="search" placeholder="搜索编号、名称或正文关键词"></label><select id="queue-filter" aria-label="筛选状态"><option value="all">全部状态</option><option value="review">待复核</option><option value="suggested">有分类建议</option><option value="approved">人工已确认</option></select><button type="button" class="secondary-button" id="export-csv">导出当前记录</button><button type="button" class="secondary-button" id="export-audit">导出复核日志</button></div>
-          <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="选择或拖入简历文件"><div class="upload-symbol">＋</div><div><strong>拖入简历，或点击选择文件</strong><p>支持可提取文本的 PDF、TXT、MD；单个文件不超过 5 MB。文件只在浏览器中处理；开启本机保存后会留在此浏览器。</p></div></div>
+          <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="选择或拖入简历文件"><div class="upload-symbol">＋</div><div><strong>拖入简历，或点击选择文件</strong><p>支持可提取文本的 PDF、TXT、MD；单个文件不超过 5 MB。导入内容仅在当前页面处理，刷新后清除，不写入本机保存。</p></div></div>
           <div class="table-wrap"><table><thead><tr><th>简历</th><th>来源</th><th>归档建议 / 人工结果</th><th>证据</th><th>状态</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="queue-body"></tbody></table><div class="empty-state hidden" id="queue-empty">没有符合当前筛选条件的简历。</div></div>
         </section>
         <section class="view hidden" id="view-rules" aria-labelledby="rules-heading"><div class="section-heading"><div><span class="eyebrow">ROLE RULES</span><h2 id="rules-heading">岗位规则 · <span id="rule-version">v1</span></h2></div><p>编辑每类岗位的关键词。修改后会重新生成建议，人工复核历史会保留当时的规则快照。</p></div><div class="notice compact"><div class="notice-icon">i</div><p>匹配只表示简历文本出现相关证据，不等于符合岗位要求。可在“数据与边界”中开启本机保存。</p></div><div class="rules-grid" id="rules-grid"></div><div class="rules-actions"><button type="button" class="primary-button" id="save-rules">保存并重新分类</button><button type="button" class="secondary-button" id="reset-rules">恢复示例规则</button></div></section>
@@ -74,7 +74,7 @@
         <section class="view hidden" id="view-privacy" aria-labelledby="privacy-heading">
           <div class="section-heading"><div><span class="eyebrow">DATA & BOUNDARIES</span><h2 id="privacy-heading">数据与使用边界</h2></div><p>清楚说明网站目前做了什么，以及它的局限。</p></div>
           <div class="privacy-grid">
-            <article class="panel"><span class="privacy-index">01</span><h3>数据留在此浏览器</h3><p>导入文件在本地读取，不上传服务器。默认只保留在当前页面；主动开启本机保存后，提取的简历正文、岗位规则和复核历史会保存在此浏览器，刷新后可恢复。请只用虚构或已获授权的数据演示。</p></article>
+            <article class="panel"><span class="privacy-index">01</span><h3>导入文件仅在当前页面</h3><p>导入文件在本地读取，不上传服务器，也不写入本机保存。刷新页面后，导入内容及其复核记录都会清除。请只用虚构或已获授权的数据演示。</p></article>
             <article class="panel"><span class="privacy-index">02</span><h3>只给归档建议</h3><p>系统依据可编辑关键词提取原文证据，不能判断能力、真实性或岗位适配度。证据不足或存在歧义时进入人工复核队列，不自动淘汰候选人。</p></article>
             <article class="panel"><span class="privacy-index">03</span><h3>没有付费模型调用</h3><p>当前版本使用确定性规则和离线样本。页面不读取 OpenAI 密钥，也没有模型评测结果；后续若接入模型，应先建立有标注的评测集。</p></article>
             <article class="panel"><span class="privacy-index">04</span><h3>部署前仍需评估</h3><p>招聘分类可能影响就业机会。浏览器本地保存没有身份认证或企业级访问控制；真实企业使用前，需要评估隐私、无障碍、公平性、人工监督与申诉流程。</p></article>
@@ -82,8 +82,8 @@
           <section class="panel local-save-panel" aria-labelledby="local-save-heading">
             <div class="panel-head"><div><span class="eyebrow">LOCAL SAVE</span><h3 id="local-save-heading">本机保存与导出</h3></div></div>
             <p id="local-save-status" role="status">—</p>
-            <p class="panel-note">开启后，此浏览器会保存提取的简历正文、显示名称、复核理由与规则。网站不上传这些内容；同一浏览器用户及同源页面可能读取本地数据。请勿把它当作正式招聘数据存储。</p>
-            <div class="local-save-actions"><button type="button" class="primary-button" id="enable-local-save">开启本机保存（含简历正文）</button><button type="button" class="secondary-button" id="export-csv-privacy">导出当前记录 CSV</button><button type="button" class="secondary-button" id="export-audit-privacy">导出复核日志 CSV</button></div>
+            <p class="panel-note">开启后，只保存岗位规则和内置虚构样本的复核记录；导入文件的名称、正文及复核理由始终不持久化。旧版可能包含导入正文的保存会在打开页面时清除。本机保存仍可被同一浏览器用户及同源页面读取，不应用于正式招聘资料。</p>
+            <div class="local-save-actions"><button type="button" class="primary-button" id="enable-local-save">开启虚构样本复核保存</button><button type="button" class="secondary-button" id="export-csv-privacy">导出当前记录 CSV</button><button type="button" class="secondary-button" id="export-audit-privacy">导出复核日志 CSV</button></div>
           </section>
           <div class="danger-zone"><div><strong>清除本机保存与当前数据</strong><p>移除本网站的本机保存、导入文件与复核记录，恢复虚构演示样本和默认规则。已下载的 CSV 不受影响。</p></div><button type="button" class="secondary-button" id="reset-session">清除并重置</button></div>
         </section>
@@ -94,6 +94,6 @@
   <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.mjs?v=local-save-4"></script>
+  <script type="module" src="./app.mjs?v=privacy-5"></script>
 </body>
 </html>
