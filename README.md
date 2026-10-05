@@ -8,14 +8,14 @@
 
 ## 3 分钟看项目
 
-当前[在线演示](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#overview)仅仓库所有者可访问。其他读者可以先看下方截图，或按[本地运行](#本地运行)启动静态站点；页面不需要 API Key。
+[公开在线演示](https://guoge667.github.io/resume-review-desk/#overview)无需登录。页面只预装虚构简历；导入文件仅在当前浏览器会话内处理，不上传到网站服务器。也可以看下方截图或按[本地运行](#本地运行)启动；页面不需要 API Key。
 
 | 用时 | 操作 | 看什么 |
 | --- | --- | --- |
-| 30 秒 | 打开[总览](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#overview) | 10 份虚构简历、分类建议与待复核数量 |
-| 60 秒 | 进入[简历队列](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#queue)，打开待复核条目 | 原文证据、原因、人工确认与说明 |
-| 60 秒 | 查看[离线评测](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#evaluation) | 40 条独立挑战样本、覆盖率、正确率和错误案例 |
-| 30 秒 | 打开[Agent 回放](https://resume-review-desk-guo.guolinghao6.chatgpt.site/#workflow)，切换 F01、F03、R05 | 正常路径、证据不足路径及规则误判；展开工具输入与输出 |
+| 30 秒 | 打开[总览](https://guoge667.github.io/resume-review-desk/#overview) | 10 份虚构简历、分类建议与待复核数量 |
+| 60 秒 | 进入[简历队列](https://guoge667.github.io/resume-review-desk/#queue)，打开待复核条目 | 原文证据、原因、人工确认与说明 |
+| 60 秒 | 查看[离线评测](https://guoge667.github.io/resume-review-desk/#evaluation) | 40 条独立挑战样本、覆盖率、正确率和错误案例 |
+| 30 秒 | 打开[Agent 回放](https://guoge667.github.io/resume-review-desk/#workflow)，切换 F01、F03、R05 | 正常路径、证据不足路径及规则误判；展开工具输入与输出 |
 
 页面导航支持 `#overview`、`#queue`、`#rules`、`#evaluation`、`#workflow`、`#privacy`，本地启动后也能使用相同的链接片段。更完整的讲解见[演示脚本](docs/DEMO.md)。
 
@@ -87,7 +87,10 @@ python -m http.server 8765 --bind 127.0.0.1 --directory dist
 
 ```powershell
 npm test
+npm run test:e2e
 ```
+
+`npm run test:e2e` 使用本机 Chrome 启动隔离的本地静态服务，按真实页面流程测试虚构 PDF 导入、证据查看、人工复核、CSV 导出及错误格式提示；测试禁止第三方网络请求，不使用 OpenAI API。
 
 PDF 解析使用随站点打包的 PDF.js 4.10.38（Apache 2.0 许可证见 `dist/vendor/LICENSE`）。扫描版 PDF 没有可提取文本时会提示先进行 OCR。
 
