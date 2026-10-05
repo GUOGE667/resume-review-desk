@@ -7,7 +7,7 @@
   <title>履历台 · 简历分类与人工复核</title>
   <meta name="description" content="离线简历分类与证据审核演示。所有示例人物均为虚构，分类结果由人工复核。">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%2310233d'/%3E%3Cpath d='M18 13h28v38H18z' fill='%23fff' rx='4'/%3E%3Cpath d='M25 24h14M25 32h14M25 40h9' stroke='%232869c7' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css?v=workflow-2">
+  <link rel="stylesheet" href="./style.css?v=rules-3">
 </head>
 <body>
   <div class="app-shell">
@@ -51,6 +51,7 @@
             <div><span>应复核案例召回率</span><strong id="eval-review">—</strong><p>预设待复核案例中成功升级的比例</p></div>
           </div>
           <p class="benchmark-note" id="eval-summary">—</p>
+          <section class="panel eval-comparison"><div class="panel-head"><div><span class="eyebrow">BEFORE / AFTER</span><h3>固定挑战集 · 规则前后对比</h3></div></div><div class="table-wrap"><table class="benchmark-table"><thead><tr><th>规则版本</th><th>完全一致</th><th>自动建议覆盖</th><th>建议正确</th><th>错误建议</th><th>应复核且已复核</th></tr></thead><tbody id="eval-comparison-body"></tbody></table></div><p class="panel-note">改进规则只使用单独的 25 条开发样本设计；上面的 40 条挑战样本用于复测。错误建议指给出岗位建议但与预设标签不一致，不能通过提高待复核比例掩盖。</p></section>
           <div class="benchmark-grid">
             <section class="panel"><div class="panel-head"><div><span class="eyebrow">PER ROLE</span><h3>各岗位指标</h3></div></div><div class="table-wrap"><table class="benchmark-table"><thead><tr><th>预设岗位</th><th>样本数</th><th>精确率</th><th>召回率</th><th>F1</th></tr></thead><tbody id="eval-role-body"></tbody></table></div><p class="panel-note">精确率指该岗位建议中正确的比例；召回率指该岗位样本中被正确归档的比例。待复核会计入漏检。</p></section>
             <section class="panel"><div class="panel-head"><div><span class="eyebrow">CONFUSION MATRIX</span><h3>预设 × 建议</h3></div></div><div class="table-wrap"><table class="benchmark-table"><thead><tr id="eval-confusion-head"></tr></thead><tbody id="eval-confusion-body"></tbody></table></div><p class="panel-note">行是预设标签，列是规则建议；右下角代表应复核且确实进入人工复核。</p></section>
@@ -60,7 +61,7 @@
         </section>
         <section class="view hidden" id="view-workflow" aria-labelledby="workflow-heading">
           <div class="section-heading"><div><span class="eyebrow">AGENT WORKFLOW REPLAY</span><h2 id="workflow-heading">离线 Agent 工作流</h2></div><p>选择一条虚构挑战样本，查看工具调用、分支选择与人工交接。</p></div>
-          <div class="notice compact"><div class="notice-icon">i</div><p>这是确定性工具编排模拟，不含 LLM 推理、模型调用或自动录用决策，也不会写入真实简历队列。证据核验只能检查关键词是否出现在摘录和原文，无法判断否定语义。</p></div>
+          <div class="notice compact"><div class="notice-icon">i</div><p>这是确定性工具编排模拟，不含 LLM 推理、模型调用或自动录用决策，也不会写入真实简历队列。否定语句只通过有限的规则处理，证据核验仍无法可靠理解真实语义。</p></div>
           <section class="panel workflow-case-panel">
             <div class="panel-head"><div><span class="eyebrow">INPUT</span><h3>选择回放案例</h3></div><span class="mini-tag">仅虚构样本</span></div>
             <div class="workflow-controls"><label for="workflow-case">挑战集案例</label><select id="workflow-case"></select><button class="primary-button" id="run-workflow" type="button">重新运行轨迹</button></div>
@@ -78,6 +79,6 @@
   <input id="file-input" class="sr-only" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple>
   <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-head"><div><span class="eyebrow">REVIEW RECORD</span><h2 id="detail-title">简历详情</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.mjs?v=audit-1"></script>
+  <script type="module" src="./app.mjs?v=rules-3"></script>
 </body>
 </html>

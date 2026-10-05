@@ -2,6 +2,7 @@ import { DEFAULT_ROLES, classifyResume } from './classifier.mjs';
 import { DEMO_RESUMES } from './demo-data.mjs';
 import { BENCHMARK_CASES } from './benchmark-data.mjs';
 import { evaluateBenchmark } from './benchmark.mjs';
+import { DEFAULT_ROLES as BASELINE_ROLES, classifyResume as classifyBaseline } from './baseline-classifier.mjs';
 import { runOfflineWorkflow } from './workflow.mjs';
 import { auditExportRows, createReviewEntry, latestReview } from './review-audit.mjs';
 
@@ -181,6 +182,7 @@ function saveRules() {
 }
 function renderEvaluation() {
   const result = evaluateBenchmark(BENCHMARK_CASES, state.roles);
+  const baseline = evaluateBenchmark(BENCHMARK_CASES, BASELINE_ROLES, classifyBaseline);
   const percent = value => `${Math.round(value * 1000) / 10}%`;
   const label = id => id === 'review' ? '待复核' : roleName(id);
   $('eval-accuracy').textContent = percent(result.exactAccuracy);
@@ -189,6 +191,13 @@ function renderEvaluation() {
   $('eval-auto-accuracy').textContent = percent(result.autoAccuracy);
   $('eval-review').textContent = percent(result.reviewRecall);
   $('eval-summary').textContent = `岗位宏平均 F1：${percent(result.macroF1)} · 复核精确率：${percent(result.reviewPrecision)}。覆盖率与自动建议正确率应一起看，避免只通过“多交给人工”提高正确率。`;
+
+  const comparison = $('eval-comparison-body'); comparison.replaceChildren();
+  for (const [name, metrics] of [['原始规则基线', baseline], [state.ruleVersion === 1 ? '改进后的默认规则' : `当前自定义规则 v${state.ruleVersion}`, result]]) {
+    const row = el('tr');
+    for (const value of [name, `${metrics.correct} / ${metrics.total}`, `${metrics.rows.filter(item => item.predicted !== 'review').length} / ${metrics.total}`, `${metrics.rows.filter(item => item.predicted !== 'review' && item.correct).length} / ${metrics.rows.filter(item => item.predicted !== 'review').length}`, metrics.wrongAutoSuggestions, `${metrics.confusion.review.review} / ${metrics.rows.filter(item => item.expected === 'review').length}`]) row.append(el('td', String(value)));
+    comparison.append(row);
+  }
 
   const roleBody = $('eval-role-body'); roleBody.replaceChildren();
   for (const role of result.roleMetrics) {

@@ -18,15 +18,15 @@ test('supported suggestion travels through four tools and still waits for a pers
 });
 
 test('missing evidence skips verification and escalates without an automatic category', () => {
-  const result = runOfflineWorkflow(byId('F03'));
+  const result = runOfflineWorkflow(byId('B07'));
   assert.equal(result.trace[2].status, 'skipped');
   assert.equal(result.final.suggestion, null);
   assert.equal(result.final.priority, '优先复核');
 });
 
 test('replay exposes a semantic false positive instead of claiming to detect it', () => {
-  const result = runOfflineWorkflow(byId('R05'));
-  assert.equal(result.final.suggestion, 'backend');
+  const result = runOfflineWorkflow(byId('R06'));
+  assert.equal(result.final.suggestion, 'data');
   assert.equal(result.trace[2].output.verified, true);
   assert.equal(result.final.requiresHumanConfirmation, true);
 });

@@ -3,6 +3,7 @@
 .benchmark-hero>div{padding:20px;min-width:0}
 .benchmark-hero strong{font-size:30px}
 .benchmark-note{margin:0 0 22px;color:#6b7d91;font-size:12px;line-height:1.7}
+.eval-comparison{margin-bottom:18px}
 .benchmark-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
 .benchmark-grid>.panel{min-width:0}
 .benchmark-table{min-width:540px}

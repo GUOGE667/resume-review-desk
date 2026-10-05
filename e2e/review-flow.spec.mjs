@@ -64,3 +64,14 @@ test('不支持的文件格式给出明确提示', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('文件格式不受支持');
   await expect(page.locator('#queue-body tr').filter({ hasText: 'unsupported.exe' })).toHaveCount(0);
 });
+
+test('评测页显示固定基线、改进结果与剩余错误', async ({ page }) => {
+  await page.goto('/#evaluation');
+  const comparison = page.locator('#eval-comparison-body');
+  await expect(comparison).toContainText('原始规则基线');
+  await expect(comparison).toContainText('22 / 40');
+  await expect(comparison).toContainText('改进后的默认规则');
+  await expect(comparison).toContainText('37 / 40');
+  await expect(comparison).toContainText('31 / 40');
+  await expect(page.locator('#eval-error-count')).toHaveText('3 / 40 条需分析');
+});
