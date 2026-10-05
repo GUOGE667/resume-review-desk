@@ -28,7 +28,7 @@ test('导入虚构 PDF、检查证据、人工复核并导出日志', async ({ p
   const row = page.locator('#queue-body tr').filter({ hasText: 'pdf-smoke.pdf' });
   await expect(row).toBeVisible();
   await expect(row).toContainText('前端工程');
-  await row.getByRole('button', { name: '查看详情' }).click();
+  await row.getByRole('button', { name: /查看 .* 的详情/ }).click();
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -39,7 +39,7 @@ test('导入虚构 PDF、检查证据、人工复核并导出日志', async ({ p
   await dialog.getByRole('button', { name: '确认人工结果' }).click();
 
   await expect(row).toContainText('人工已确认');
-  await row.getByRole('button', { name: '查看详情' }).click();
+  await row.getByRole('button', { name: /查看 .* 的详情/ }).click();
   await expect(dialog.getByText('复核历史 · 1 次')).toBeVisible();
   await expect(dialog.getByText('理由：核对原文后确认 React 与 TypeScript 项目经历。')).toBeVisible();
   await dialog.getByRole('button', { name: '关闭详情' }).click();
@@ -73,7 +73,7 @@ test('两个 CSV 导出把不可信文件名与复核理由保留为文本', asy
     buffer:Buffer.from('Fictional resume built React TypeScript CSS components for an internal demo.'),
   });
   const row = page.locator('#queue-body tr').filter({ hasText:'=1+1.txt' });
-  await row.getByRole('button', { name:'查看详情' }).click();
+  await row.getByRole('button', { name:/查看 .* 的详情/ }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
   await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('=1+1');
@@ -101,6 +101,36 @@ test('评测页显示固定基线、改进结果与剩余错误', async ({ page 
   await expect(page.locator('#eval-error-count')).toHaveText('3 / 40 条需分析');
 });
 
+test('键盘导航与复核弹窗保持清晰的焦点顺序', async ({ page }) => {
+  await page.goto('/');
+  const queueNav = page.getByRole('button', { name:'简历队列 10' });
+  await queueNav.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#page-title')).toBeFocused();
+  await expect(queueNav).toHaveAttribute('aria-current', 'page');
+
+  const row = page.locator('#queue-body tr').filter({ hasText:'林晨（虚构）' });
+  const opener = row.getByRole('button', { name:'查看 林晨（虚构） 的详情' });
+  await opener.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#detail-title')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(opener).toBeFocused();
+
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name:'确认人工结果' }).click();
+  const reason = dialog.getByRole('textbox', { name:'本次复核理由（必填）' });
+  await expect(reason).toBeFocused();
+  await expect(reason).toHaveAttribute('aria-invalid', 'true');
+  await reason.fill('键盘核对虚构样本的原文证据。');
+  await expect(reason).not.toHaveAttribute('aria-invalid', 'true');
+  await dialog.getByRole('button', { name:'确认人工结果' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(opener).toBeFocused();
+  await expect(row).toContainText('人工已确认');
+});
+
 test('本机保存只恢复内置虚构样本，导入文件及旧版快照不持久化', async ({ page }) => {
   await page.goto('/#queue');
   await page.evaluate(() => localStorage.setItem('resume-review-desk:local-snapshot:v1', '{"resumes":[{"text":"OLD_PRIVATE_TEXT"}]}'));
@@ -113,13 +143,13 @@ test('本机保存只恢复内置虚构样本，导入文件及旧版快照不�
   });
   const row = page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' });
   await expect(row).toBeVisible();
-  await row.getByRole('button', { name:'查看详情' }).click();
+  await row.getByRole('button', { name:/查看 .* 的详情/ }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
   await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('PRIVATE_IMPORT_REVIEW');
   await dialog.getByRole('button', { name:'确认人工结果' }).click();
   const demoRow = page.locator('#queue-body tr').filter({ hasText:'林晨（虚构）' });
-  await demoRow.getByRole('button', { name:'查看详情' }).click();
+  await demoRow.getByRole('button', { name:/查看 .* 的详情/ }).click();
   await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
   await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('虚构样本已核对。');
   await dialog.getByRole('button', { name:'确认人工结果' }).click();
@@ -137,7 +167,7 @@ test('本机保存只恢复内置虚构样本，导入文件及旧版快照不�
   await page.getByRole('button', { name:'简历队列 10' }).click();
   await expect(page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' })).toHaveCount(0);
   await expect(demoRow).toContainText('人工已确认');
-  await demoRow.getByRole('button', { name:'查看详情' }).click();
+  await demoRow.getByRole('button', { name:/查看 .* 的详情/ }).click();
   await expect(dialog.getByText('理由：虚构样本已核对。')).toBeVisible();
   await dialog.getByRole('button', { name:'关闭详情' }).click();
 

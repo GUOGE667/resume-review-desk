@@ -17,6 +17,7 @@ const legacyPurged = purgeLegacySnapshot(browserStorage);
 const restored = loadSnapshot(browserStorage);
 const state = { roles:restored?.roles || cloneRoles(), ruleVersion:restored?.ruleVersion || 1, resumes:makeSamples(restored?.reviews), activeView:'overview', selectedId:null, localSaveEnabled:!!restored };
 let toastTimer;
+let detailTrigger = null;
 
 function updateStorageUi() {
   $('local-save-status').textContent = state.localSaveEnabled
@@ -58,20 +59,26 @@ function confirmedReview(item) { const review = latestReview(item); return revie
 function statusOf(item) { if (confirmedReview(item)) return 'approved'; return latestReview(item)?.confirmedRole === 'undetermined' || analysis(item).needsReview ? 'review' : 'suggested'; }
 function statusLabel(item) { return confirmedReview(item) ? '人工已确认' : latestReview(item)?.confirmedRole === 'undetermined' ? '待进一步确认' : analysis(item).needsReview ? '待人工复核' : '有分类建议'; }
 function categoryLabel(item) { const review = latestReview(item); return review ? decisionLabel(review.confirmedRole) : analysis(item).label; }
-function setView(view) {
+function setView(view, focusHeading = false) {
   if (!$(`view-${view}`)) return;
   state.activeView = view;
   if (window.location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
   const names = { overview:'总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线评测',workflow:'Agent 回放',privacy:'数据与边界' };
   const titles = { overview:'招聘审核总览',queue:'简历队列',rules:'岗位规则',evaluation:'离线样本评测',workflow:'离线 Agent 工作流',privacy:'数据与使用边界' };
   document.querySelectorAll('.view').forEach(node => node.classList.toggle('hidden', node.id !== `view-${view}`));
-  document.querySelectorAll('.nav-item').forEach(node => node.classList.toggle('active', node.dataset.view === view));
+  document.querySelectorAll('.nav-item').forEach(node => {
+    const active = node.dataset.view === view;
+    node.classList.toggle('active', active);
+    if (active) node.setAttribute('aria-current', 'page');
+    else node.removeAttribute('aria-current');
+  });
   $('crumb').textContent = names[view]; $('page-title').textContent = titles[view];
   if (view === 'rules') renderRules();
   if (view === 'evaluation') renderEvaluation();
   if (view === 'workflow') renderWorkflow();
   if (view === 'queue') renderQueue();
   window.scrollTo({ top:0, behavior:'instant' });
+  if (focusHeading) $('page-title').focus({ preventScroll:true });
 }
 
 function renderOverview() {
@@ -101,7 +108,9 @@ function renderOverview() {
     const row = el('div', undefined, 'review-entry');
     row.append(el('div', item.name.slice(0, 1), 'avatar'));
     const main = el('div', undefined, 'review-entry-main'); main.append(el('strong', item.name), el('span', analysis(item).reason));
-    const button = el('button', '查看'); button.type = 'button'; button.addEventListener('click', () => openDetail(item.id));
+    const button = el('button', '查看'); button.type = 'button'; button.dataset.resumeId = item.id;
+    button.setAttribute('aria-label', `查看 ${item.name} 的详情`);
+    button.addEventListener('click', () => openDetail(item.id));
     row.append(main, button); preview.append(row);
   }
 }
@@ -126,13 +135,18 @@ function renderQueue() {
     if (latestReview(item)) category.append(el('span', `人工记录 · ${item.reviewHistory.length} 次`, 'muted'));
     tr.append(category, el('td', `${result.evidence.length} 处`));
     const status = el('td'); status.append(el('span', statusLabel(item), `status ${statusOf(item)}`)); tr.append(status);
-    const action = el('td'); const button = el('button', '查看详情', 'row-open'); button.type='button'; button.addEventListener('click', () => openDetail(item.id)); action.append(button); tr.append(action);
+    const action = el('td'); const button = el('button', '查看详情', 'row-open'); button.type='button'; button.dataset.resumeId=item.id;
+    button.setAttribute('aria-label', `查看 ${item.name} 的详情`);
+    button.addEventListener('click', () => openDetail(item.id)); action.append(button); tr.append(action);
     body.append(tr);
   }
 }
 
 function openDetail(id) {
   const item = state.resumes.find(candidate => candidate.id === id); if (!item) return;
+  detailTrigger = document.activeElement instanceof HTMLElement &&
+    document.activeElement.matches('button, input, select, textarea, a[href], [tabindex]')
+    ? document.activeElement : null;
   state.selectedId = id;
   const result = analysis(item); const content = $('detail-content'); content.replaceChildren();
   $('detail-title').textContent = item.name;
@@ -154,19 +168,21 @@ function openDetail(id) {
   const reviewSection = el('section', undefined, 'detail-section'); reviewSection.append(el('h3', '人工复核'));
   const controls = el('div', undefined, 'review-controls');
   const categoryLabelEl = el('label', '人工归档类别');
-  const select = el('select'); select.setAttribute('aria-label', '人工归档类别');
+  const select = el('select'); select.setAttribute('aria-label', '人工归档类别'); select.required = true;
+  select.addEventListener('change', () => select.removeAttribute('aria-invalid'));
   const placeholder = el('option', '请选择'); placeholder.value = ''; select.append(placeholder);
   for (const role of state.roles) { const option = el('option', role.name); option.value = role.id; select.append(option); }
   const pending = el('option', '仍待进一步确认'); pending.value = 'undetermined'; select.append(pending);
   const previous = latestReview(item);
   select.value = previous ? previous.confirmedRole : (result.suggestion || '');
   categoryLabelEl.append(select);
-  const noteLabel = el('label', '本次复核理由（必填）'); const note = el('textarea'); note.placeholder = '说明核对依据、修改原因或仍需补充的信息'; note.maxLength = 500; noteLabel.append(note);
+  const noteLabel = el('label', '本次复核理由（必填）'); const note = el('textarea'); note.placeholder = '说明核对依据、修改原因或仍需补充的信息'; note.maxLength = 500; note.required = true;
+  note.addEventListener('input', () => note.removeAttribute('aria-invalid')); noteLabel.append(note);
   controls.append(categoryLabelEl, noteLabel); reviewSection.append(controls);
   const actions = el('div', undefined, 'review-actions'); const save = el('button', previous ? '新增复核记录' : '确认人工结果', 'primary-button'); save.type='button';
   save.addEventListener('click', () => {
-    if (!select.value) { notify('请先选择归档类别或“仍待进一步确认”。'); select.focus(); return; }
-    if (!note.value.trim()) { notify('请填写本次复核理由。'); note.focus(); return; }
+    if (!select.value) { select.setAttribute('aria-invalid', 'true'); notify('请先选择归档类别或“仍待进一步确认”。'); select.focus(); return; }
+    if (!note.value.trim()) { note.setAttribute('aria-invalid', 'true'); notify('请填写本次复核理由。'); note.focus(); return; }
     const entry = createReviewEntry({ item, suggestion:result.suggestion, confirmedRole:select.value, reason:note.value, ruleVersion:state.ruleVersion, roles:state.roles });
     item.reviewHistory.push(entry);
     const durable = state.localSaveEnabled && item.source === '虚构样本';
@@ -188,6 +204,7 @@ function openDetail(id) {
   }
   body.append(historySection); content.append(body);
   $('detail-dialog').showModal();
+  $('detail-title').focus({ preventScroll:true });
 }
 
 function renderRules() {
@@ -360,8 +377,8 @@ function exportAuditCsv() {
   notify(`已导出 ${rows.length} 条复核日志（不含简历正文）。`);
 }
 
-document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
-document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => setView(button.dataset.go)));
+document.querySelectorAll('.nav-item').forEach(button => button.addEventListener('click', () => setView(button.dataset.view, true)));
+document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => setView(button.dataset.go, true)));
 $('top-import').addEventListener('click', () => $('file-input').click());
 $('file-input').addEventListener('change', event => { if (event.target.files?.length) importFiles(event.target.files); event.target.value=''; });
 const zone = $('upload-zone'); zone.addEventListener('click', () => $('file-input').click());
@@ -390,14 +407,22 @@ $('export-csv-privacy').addEventListener('click', exportCsv);
 $('reset-session').addEventListener('click', () => {
   try { clearSnapshot(browserStorage); } catch { notify('本机保存数据无法清除；请检查浏览器存储权限。'); return; }
   state.localSaveEnabled=false; state.roles=cloneRoles(); state.ruleVersion=1; state.resumes=makeSamples();
-  $('queue-search').value=''; $('queue-filter').value='all'; updateStorageUi(); renderAll(); setView('overview');
+  $('queue-search').value=''; $('queue-filter').value='all'; updateStorageUi(); renderAll(); setView('overview', true);
   notify('本机保存、导入文件和复核记录已清除，已恢复虚构演示样本。');
 });
 $('close-dialog').addEventListener('click', () => $('detail-dialog').close());
+$('detail-dialog').addEventListener('close', () => {
+  const original = detailTrigger?.isConnected && !detailTrigger.closest('.hidden') ? detailTrigger : null;
+  const replacement = [...document.querySelectorAll('.view:not(.hidden) [data-resume-id]')]
+    .find(button => button.dataset.resumeId === state.selectedId);
+  const fallback = state.activeView === 'queue' ? $('queue-filter') : document.querySelector('.nav-item.active');
+  (original || replacement || fallback)?.focus({ preventScroll:true });
+  detailTrigger = null;
+});
 updateStorageUi();
 renderAll();
 if (legacyPurged) notify('旧版可能包含导入简历正文的本机保存已清除。');
-window.addEventListener('hashchange', () => setView(window.location.hash.slice(1) || 'overview'));
+window.addEventListener('hashchange', () => setView(window.location.hash.slice(1) || 'overview', true));
 setView(window.location.hash.slice(1) || 'overview');
 
 // Optional browser WebMCP bridge: exposes the existing review journey without
