@@ -5,13 +5,36 @@ import { evaluateBenchmark } from './benchmark.mjs';
 import { DEFAULT_ROLES as BASELINE_ROLES, classifyResume as classifyBaseline } from './baseline-classifier.mjs';
 import { runOfflineWorkflow } from './workflow.mjs';
 import { auditExportRows, createReviewEntry, latestReview } from './review-audit.mjs';
+import { clearSnapshot, loadSnapshot, saveSnapshot } from './local-save.mjs';
 
 const $ = id => document.getElementById(id);
 const roleName = id => state.roles.find(role => role.id === id)?.name || '待定';
 const cloneRoles = () => DEFAULT_ROLES.map(role => ({ ...role, keywords:[...role.keywords] }));
 const makeSamples = () => DEMO_RESUMES.map(item => ({ ...item, source:'虚构样本', reviewHistory:[] }));
-const state = { roles:cloneRoles(), ruleVersion:1, resumes:makeSamples(), activeView:'overview', selectedId:null };
+const restored = loadSnapshot(window.localStorage);
+const state = { roles:restored?.roles || cloneRoles(), ruleVersion:restored?.ruleVersion || 1, resumes:restored?.resumes || makeSamples(), activeView:'overview', selectedId:null, localSaveEnabled:!!restored };
 let toastTimer;
+
+function updateStorageUi() {
+  $('local-save-status').textContent = state.localSaveEnabled
+    ? `本机保存已开启：${state.resumes.length} 份记录。刷新页面后会从此浏览器恢复。`
+    : '本机保存未开启：刷新页面后导入文件与复核记录会消失。';
+  $('enable-local-save').disabled = state.localSaveEnabled;
+  $('enable-local-save').textContent = state.localSaveEnabled ? '已开启本机保存' : '开启本机保存（含简历正文）';
+}
+
+function persistIfEnabled() {
+  if (!state.localSaveEnabled) return '';
+  let errorMessage = '';
+  try { saveSnapshot(window.localStorage, state); }
+  catch (error) {
+    state.localSaveEnabled = false;
+    try { clearSnapshot(window.localStorage); } catch { /* Storage may be blocked. */ }
+    errorMessage = error.message || '本机保存失败；当前数据只保留在页面内。';
+  }
+  updateStorageUi();
+  return errorMessage;
+}
 
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -143,7 +166,8 @@ function openDetail(id) {
     if (!note.value.trim()) { notify('请填写本次复核理由。'); note.focus(); return; }
     const entry = createReviewEntry({ item, suggestion:result.suggestion, confirmedRole:select.value, reason:note.value, ruleVersion:state.ruleVersion, roles:state.roles });
     item.reviewHistory.push(entry);
-    renderAll(); $('detail-dialog').close(); notify('人工复核结果已记录在当前会话。');
+    const storageError = persistIfEnabled();
+    renderAll(); $('detail-dialog').close(); notify(storageError || (state.localSaveEnabled ? '人工复核结果已保存在此浏览器。' : '人工复核结果已记录在当前会话。'));
   });
   actions.append(save); reviewSection.append(actions); body.append(reviewSection);
   const historySection = el('section', undefined, 'detail-section review-history');
@@ -178,7 +202,7 @@ function saveRules() {
   });
   if (next.some(role => role.keywords.length < 2)) { notify('每个岗位类别至少保留两个关键词。'); return; }
   if (JSON.stringify(next) === JSON.stringify(state.roles)) { notify('岗位规则没有变化。'); return; }
-  state.roles = next; state.ruleVersion++; renderAll(); renderRules(); notify(`岗位规则已更新到 v${state.ruleVersion}，归档建议已重新计算。`);
+  state.roles = next; state.ruleVersion++; const storageError = persistIfEnabled(); renderAll(); renderRules(); notify(storageError || `岗位规则已更新到 v${state.ruleVersion}，归档建议已重新计算。`);
 }
 function renderEvaluation() {
   const result = evaluateBenchmark(BENCHMARK_CASES, state.roles);
@@ -304,8 +328,9 @@ async function importFiles(files) {
       imported++;
     } catch (error) { errors.push(error.message || `${file.name} 导入失败。`); }
   }
+  const storageError = persistIfEnabled();
   renderAll(); setView('queue');
-  notify(`${imported} 份简历已导入当前会话。${errors.length ? ` ${errors.length} 份失败：${errors[0]}` : ''}`);
+  notify(`${imported} 份简历已导入${state.localSaveEnabled ? '并保存在此浏览器' : '当前会话'}。${errors.length ? ` ${errors.length} 份失败：${errors[0]}` : ''}${storageError ? ` 本机保存失败：${storageError}` : ''}`);
 }
 
 function csvCell(value) {
@@ -349,13 +374,29 @@ zone.addEventListener('drop', event => { event.preventDefault(); zone.classList.
 $('queue-search').addEventListener('input', renderQueue);
 $('queue-filter').addEventListener('change', renderQueue);
 $('save-rules').addEventListener('click', saveRules);
-$('reset-rules').addEventListener('click', () => { const next=cloneRoles(); if (JSON.stringify(next) === JSON.stringify(state.roles)) { notify('当前已是示例规则。'); return; } state.roles=next; state.ruleVersion++; renderAll(); renderRules(); notify(`已恢复示例规则，当前版本 v${state.ruleVersion}。`); });
+$('reset-rules').addEventListener('click', () => { const next=cloneRoles(); if (JSON.stringify(next) === JSON.stringify(state.roles)) { notify('当前已是示例规则。'); return; } state.roles=next; state.ruleVersion++; const storageError=persistIfEnabled(); renderAll(); renderRules(); notify(storageError || `已恢复示例规则，当前版本 v${state.ruleVersion}。`); });
 $('export-csv').addEventListener('click', exportCsv);
 $('export-audit').addEventListener('click', exportAuditCsv);
 $('workflow-case').addEventListener('change', renderWorkflow);
 $('run-workflow').addEventListener('click', renderWorkflow);
-$('reset-session').addEventListener('click', () => { state.roles=cloneRoles(); state.ruleVersion=1; state.resumes=makeSamples(); $('queue-search').value=''; $('queue-filter').value='all'; renderAll(); setView('overview'); notify('已重置为虚构演示样本，复核历史已清空。'); });
+$('enable-local-save').addEventListener('click', () => {
+  try {
+    saveSnapshot(window.localStorage, state);
+    state.localSaveEnabled = true;
+    updateStorageUi();
+    notify('已开启本机保存；导入的简历正文和复核理由会留在此浏览器。');
+  } catch (error) { notify(error.message || '浏览器无法保存数据，请检查存储权限或剩余空间。'); }
+});
+$('export-audit-privacy').addEventListener('click', exportAuditCsv);
+$('export-csv-privacy').addEventListener('click', exportCsv);
+$('reset-session').addEventListener('click', () => {
+  try { clearSnapshot(window.localStorage); } catch { notify('本机保存数据无法清除；请检查浏览器存储权限。'); return; }
+  state.localSaveEnabled=false; state.roles=cloneRoles(); state.ruleVersion=1; state.resumes=makeSamples();
+  $('queue-search').value=''; $('queue-filter').value='all'; updateStorageUi(); renderAll(); setView('overview');
+  notify('本机保存、导入文件和复核记录已清除，已恢复虚构演示样本。');
+});
 $('close-dialog').addEventListener('click', () => $('detail-dialog').close());
+updateStorageUi();
 renderAll();
 window.addEventListener('hashchange', () => setView(window.location.hash.slice(1) || 'overview'));
 setView(window.location.hash.slice(1) || 'overview');

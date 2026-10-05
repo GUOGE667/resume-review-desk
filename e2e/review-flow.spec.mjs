@@ -75,3 +75,44 @@ test('评测页显示固定基线、改进结果与剩余错误', async ({ page 
   await expect(comparison).toContainText('31 / 40');
   await expect(page.locator('#eval-error-count')).toHaveText('3 / 40 条需分析');
 });
+
+test('主动开启本机保存后可刷新恢复、导出和清除虚构复核记录', async ({ page }) => {
+  await page.goto('/#queue');
+  await page.locator('#file-input').setInputFiles({
+    name:'fictional-local.txt',
+    mimeType:'text/plain',
+    buffer:Buffer.from('Fictional candidate built React TypeScript CSS components for a demo project.'),
+  });
+  const row = page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' });
+  await expect(row).toBeVisible();
+  await row.getByRole('button', { name:'查看详情' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name:'人工归档类别' }).selectOption('frontend');
+  await dialog.getByRole('textbox', { name:'本次复核理由（必填）' }).fill('虚构材料已人工核对。');
+  await dialog.getByRole('button', { name:'确认人工结果' }).click();
+  await page.getByRole('button', { name:'数据与边界' }).click();
+  await page.getByRole('button', { name:'开启本机保存（含简历正文）' }).click();
+  await expect(page.locator('#local-save-status')).toContainText('本机保存已开启');
+
+  await page.reload();
+  await expect(page.locator('#local-save-status')).toContainText('本机保存已开启');
+  await page.getByRole('button', { name:'简历队列 11' }).click();
+  await expect(row).toContainText('人工已确认');
+  await row.getByRole('button', { name:'查看详情' }).click();
+  await expect(dialog.getByText('理由：虚构材料已人工核对。')).toBeVisible();
+  await dialog.getByRole('button', { name:'关闭详情' }).click();
+
+  await page.getByRole('button', { name:'数据与边界' }).click();
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name:'导出复核日志 CSV' }).click();
+  const download = await downloadEvent;
+  const csv = await readFile(await download.path(), 'utf8');
+  expect(csv).toContain('虚构材料已人工核对。');
+
+  await page.getByRole('button', { name:'清除并重置' }).click();
+  await page.reload();
+  await page.getByRole('button', { name:'简历队列 10' }).click();
+  await expect(page.locator('#queue-body tr').filter({ hasText:'fictional-local.txt' })).toHaveCount(0);
+  await page.getByRole('button', { name:'数据与边界' }).click();
+  await expect(page.locator('#local-save-status')).toContainText('本机保存未开启');
+});
